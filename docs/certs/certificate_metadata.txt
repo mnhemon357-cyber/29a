@@ -1,0 +1,6 @@
+subject=C=BD, O=EMON INDUSTRY PVT LTD _29A, OU=Cyber Guardian, CN=Cyber Guardian Private Root CA
+issuer=C=BD, O=EMON INDUSTRY PVT LTD _29A, OU=Cyber Guardian, CN=Cyber Guardian Private Root CA
+serial=2EEF7046ECABEB9C493505A6B5002CAD818A15DD
+notBefore=Nov  5 02:04:09 2026 GMT
+notAfter=Nov  2 02:04:09 2036 GMT
+sha256 Fingerprint=AA:DF:60:FC:CE:71:CA:A9:72:ED:2A:F8:6C:92:91:AE:66:03:9D:C5:53:B8:05:AF:DC:67:CD:0B:CA:20:6F:7B

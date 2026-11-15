@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.CyberGuardian29A" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#00E5A8</item>
+        <item name="colorPrimaryVariant">#070B14</item>
+        <item name="colorOnPrimary">#04150F</item>
+        <item name="android:statusBarColor">#070B14</item>
+        <item name="android:windowBackground">#070B14</item>
+    </style>
+</resources>

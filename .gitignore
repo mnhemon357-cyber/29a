@@ -1,0 +1,14 @@
+# Never commit Root CA private keys, passphrases, or release keystores
+*private_key*
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+.env
+__pycache__/
+*.pyc
+.DS_Store
+android-app/.gradle/
+android-app/build/
+android-app/app/build/

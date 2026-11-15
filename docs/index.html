@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>29A — Cyber Guardian® Anti-Spyware, APK &amp; Root CA Portal</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <style>
+    :root {
+      --bg: #070b14;
+      --surface: #0f1624;
+      --surface-alt: #141d2f;
+      --border: #22304a;
+      --accent: #00e5a8;
+      --accent-glow: rgba(0, 229, 168, 0.14);
+      --blue: #38bdf8;
+      --text: #eef2f8;
+      --muted: #8ea0bd;
+      --danger: #ff5c7c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: radial-gradient(circle at top right, #101c36 0%, var(--bg) 55%);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2rem 1rem 4rem;
+    }
+    .container { max-width: 1040px; margin: 0 auto; }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.75rem;
+      border: 1px solid var(--border);
+      background: linear-gradient(145deg, rgba(19, 28, 46, 0.95), rgba(10, 15, 26, 0.98));
+      padding: 2rem;
+      border-radius: 16px;
+      margin-bottom: 1.75rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    }
+    .logo-wrap img {
+      width: 116px;
+      height: 116px;
+      border-radius: 22px;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      display: block;
+    }
+    .hero-content { flex: 1; min-width: 260px; }
+    .badge {
+      display: inline-block;
+      background: var(--accent-glow);
+      color: var(--accent);
+      border: 1px solid rgba(0, 229, 168, 0.45);
+      padding: 0.22rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.65rem;
+    }
+    h1 { font-size: 1.95rem; font-weight: 800; letter-spacing: -0.3px; }
+    .subtitle { color: var(--muted); margin-top: 0.35rem; font-size: 0.96rem; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 1.15rem; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--accent);
+      color: #04150f;
+      font-weight: 700;
+      font-size: 0.86rem;
+      padding: 0.62rem 1.1rem;
+      border-radius: 8px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+      gap: 1.35rem;
+      margin-bottom: 1.5rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+    }
+    h2 { font-size: 1.12rem; color: var(--accent); margin-bottom: 0.95rem; }
+    .kv {
+      font-size: 0.86rem;
+      margin-bottom: 0.68rem;
+      padding-bottom: 0.52rem;
+      border-bottom: 1px solid rgba(34, 48, 74, 0.6);
+      word-break: break-all;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .kv:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .kv span {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--muted);
+      display: block;
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 0.12rem;
+    }
+    .dev-tags { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.75rem 0 1rem; }
+    .tag {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      color: var(--blue);
+      padding: 0.25rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    pre {
+      background: #060911;
+      border: 1px solid var(--border);
+      padding: 1.1rem;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 0.84rem;
+      color: #7dd3fc;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .dropzone {
+      border: 1.5px dashed var(--border);
+      background: var(--surface-alt);
+      border-radius: 10px;
+      padding: 1.15rem;
+      text-align: center;
+      margin-bottom: 0.75rem;
+    }
+    input[type="file"] { color: var(--text); font-size: 0.86rem; max-width: 100%; }
+    #verifyResult {
+      margin-top: 0.85rem;
+      padding: 0.95rem;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      word-break: break-all;
+      display: none;
+    }
+    .ok { background: rgba(0, 229, 168, 0.12); border: 1px solid var(--accent); color: var(--accent); }
+    .bad { background: rgba(255, 92, 124, 0.12); border: 1px solid var(--danger); color: var(--danger); }
+    footer {
+      margin-top: 2.25rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      color: var(--muted);
+      font-size: 0.83rem;
+    }
+    .brand-foot { display: flex; align-items: center; gap: 0.75rem; }
+    .brand-foot img { width: 36px; height: 36px; border-radius: 6px; background: #fff; padding: 2px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-wrap">
+        <img src="assets/29a-logo.png" alt="29A App Logo" />
+      </div>
+      <div class="hero-content">
+        <div class="badge">CYBER GUARDIAN® v2.1 • EMON INDUSTRY PVT LTD _29A</div>
+        <h1>29A Anti-Spyware &amp; Cryptographic Trust Shield</h1>
+        <p class="subtitle">
+          Android APK trust scanner, rogue Root CA detection, and local endpoint protection for Android, Termux, and Linux.
+        </p>
+        <div class="btn-row">
+          <a class="btn" href="downloads/29a-cyber-guardian-v2.1.apk" download>Download Android APK (v2.1)</a>
+          <a class="btn btn-outline" href="certs/cyber_guardian_root_ca.der" download>Android CA (.DER)</a>
+          <a class="btn btn-outline" href="certs/cyber_guardian_root_ca.crt" download>Root CA (.CRT)</a>
+          <a class="btn btn-outline" href="certs/cyber_guardian_root_ca.pem" download>Linux CA (.PEM)</a>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Developer &amp; Technical Support Profile</h2>
+        <div style="font-size: 1.25rem; font-weight: 800; color: #fff;">NAZMUL HOSSAIN</div>
+        <div class="dev-tags">
+          <span class="tag">Computer Science Student</span>
+          <span class="tag">Python Developer</span>
+          <span class="tag">Linux &amp; Cybersecurity Enthusiast</span>
+        </div>
+        <div class="kv"><span>Designation</span>Lead Engineer • System Architecture &amp; Security Operations</div>
+        <div class="kv"><span>Organization</span>EMON INDUSTRY PVT LTD _29A</div>
+        <div class="kv"><span>Technical Support Desk</span><a href="mailto:secure@emonindustry.bd" style="color: var(--accent);">secure@emonindustry.bd</a> • Support Desk v2.1</div>
+        <div class="kv"><span>Release Edition</span>Version 2.1 • UTF-8 • English + বাংলা</div>
+      </div>
+
+      <div class="card">
+        <h2>Root CA Cryptographic Profile</h2>
+        <div class="kv"><span>Subject &amp; Issuer DN</span>C=BD, O=EMON INDUSTRY PVT LTD _29A, OU=Cyber Guardian, CN=Cyber Guardian Private Root CA</div>
+        <div class="kv"><span>Serial Number</span>2E:EF:70:46:EC:AB:EB:9C:49:35:05:A6:B5:00:2C:AD:81:8A:15:DD</div>
+        <div class="kv"><span>Validity Period</span>05 Nov 2026 – 02 Nov 2036 (3650 Days)</div>
+        <div class="kv"><span>Key &amp; Signature</span>RSA 3072-bit • SHA-256 • CA:TRUE</div>
+        <div class="kv"><span>Official SHA-256 Fingerprint</span>AA:DF:60:FC:CE:71:CA:A9:72:ED:2A:F8:6C:92:91:AE:66:03:9D:C5:53:B8:05:AF:DC:67:CD:0B:CA:20:6F:7B</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>In-Browser Certificate Verifier</h2>
+        <p style="font-size: 0.87rem; color: var(--muted); margin-bottom: 0.9rem;">
+          Select any <code>.der</code>, <code>.crt</code>, or <code>.pem</code> file to compute its SHA-256 fingerprint locally via Web Crypto API before installation.
+        </p>
+        <div class="dropzone">
+          <input type="file" id="certInput" accept=".crt,.pem,.der,.cer" />
+        </div>
+        <button class="btn btn-outline" type="button" id="verifyBundledBtn">Verify Hosted Cyber Guardian CA</button>
+        <div id="verifyResult"></div>
+      </div>
+
+      <div class="card">
+        <h2>Linux &amp; Termux CLI Deployment</h2>
+        <pre>git clone https://github.com/&lt;your-username&gt;/29a.git
+cd 29a
+chmod +x scripts/*.sh app/29a_guard.py
+./scripts/verify.sh
+./scripts/install_ca.sh
+python3 app/29a_guard.py</pre>
+      </div>
+    </div>
+
+    <footer>
+      <div class="brand-foot">
+        <img src="assets/emon-industry-logo.png" alt="EMON INDUSTRY" />
+        <div>
+          <strong>EMON INDUSTRY PVT LTD _29A</strong><br />
+          Lead Engineer: Nazmul Hossain • Support Desk v2.1: secure@emonindustry.bd
+        </div>
+      </div>
+      <div>Cyber Guardian® v2.1 • © 2026 All Rights Reserved</div>
+    </footer>
+  </div>
+
+  <script>
+    const EXPECTED_SHA256 = "AA:DF:60:FC:CE:71:CA:A9:72:ED:2A:F8:6C:92:91:AE:66:03:9D:C5:53:B8:05:AF:DC:67:CD:0B:CA:20:6F:7B";
+
+    function pemToArrayBuffer(pem) {
+      const b64 = pem.replace(/-----BEGIN CERTIFICATE-----/g, "")
+                     .replace(/-----END CERTIFICATE-----/g, "")
+                     .replace(/\s+/g, "");
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes.buffer;
+    }
+
+    async function checkBuffer(buffer, label) {
+      const out = document.getElementById("verifyResult");
+      const textCheck = new TextDecoder().decode(buffer.slice(0, 32));
+      let derBuffer = buffer;
+      if (textCheck.includes("-----BEGIN")) {
+        derBuffer = pemToArrayBuffer(new TextDecoder().decode(buffer));
+      }
+      const hashBuffer = await crypto.subtle.digest("SHA-256", derBuffer);
+      const hashHex = Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, "0").toUpperCase())
+        .join(":");
+
+      out.style.display = "block";
+      if (hashHex === EXPECTED_SHA256) {
+        out.className = "ok";
+        out.innerHTML = `<strong>[VERIFIED]</strong> ${label} matches authentic Cyber Guardian Root CA.<br><br>SHA-256: ${hashHex}`;
+      } else {
+        out.className = "bad";
+        out.innerHTML = `<strong>[WARNING]</strong> ${label} fingerprint mismatch! Do NOT install.<br><br>Computed: ${hashHex}`;
+      }
+    }
+
+    document.getElementById("certInput").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (file) await checkBuffer(await file.arrayBuffer(), file.name);
+    });
+
+    document.getElementById("verifyBundledBtn").addEventListener("click", async () => {
+      try {
+        const resp = await fetch("certs/cyber_guardian_root_ca.der");
+        await checkBuffer(await resp.arrayBuffer(), "Hosted cyber_guardian_root_ca.der");
+      } catch (err) {
+        const out = document.getElementById("verifyResult");
+        out.style.display = "block";
+        out.className = "bad";
+        out.textContent = "Serve via GitHub Pages or a local HTTP server to fetch bundled certificates.";
+      }
+    });
+  </script>
+</body>
+</html>

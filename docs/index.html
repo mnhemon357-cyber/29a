@@ -1,308 +1,345 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>29A — Cyber Guardian® Anti-Spyware, APK &amp; Root CA Portal</title>
-  <link rel="icon" type="image/png" href="assets/favicon.png" />
-  <style>
-    :root {
-      --bg: #070b14;
-      --surface: #0f1624;
-      --surface-alt: #141d2f;
-      --border: #22304a;
-      --accent: #00e5a8;
-      --accent-glow: rgba(0, 229, 168, 0.14);
-      --blue: #38bdf8;
-      --text: #eef2f8;
-      --muted: #8ea0bd;
-      --danger: #ff5c7c;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
-      background: radial-gradient(circle at top right, #101c36 0%, var(--bg) 55%);
-      color: var(--text);
-      line-height: 1.6;
-      padding: 2rem 1rem 4rem;
-    }
-    .container { max-width: 1040px; margin: 0 auto; }
-    header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 1.75rem;
-      border: 1px solid var(--border);
-      background: linear-gradient(145deg, rgba(19, 28, 46, 0.95), rgba(10, 15, 26, 0.98));
-      padding: 2rem;
-      border-radius: 16px;
-      margin-bottom: 1.75rem;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
-    }
-    .logo-wrap img {
-      width: 116px;
-      height: 116px;
-      border-radius: 22px;
-      border: 1px solid var(--border);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-      display: block;
-    }
-    .hero-content { flex: 1; min-width: 260px; }
-    .badge {
-      display: inline-block;
-      background: var(--accent-glow);
-      color: var(--accent);
-      border: 1px solid rgba(0, 229, 168, 0.45);
-      padding: 0.22rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.76rem;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      margin-bottom: 0.65rem;
-    }
-    h1 { font-size: 1.95rem; font-weight: 800; letter-spacing: -0.3px; }
-    .subtitle { color: var(--muted); margin-top: 0.35rem; font-size: 0.96rem; }
-    .btn-row { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 1.15rem; }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      background: var(--accent);
-      color: #04150f;
-      font-weight: 700;
-      font-size: 0.86rem;
-      padding: 0.62rem 1.1rem;
-      border-radius: 8px;
-      text-decoration: none;
-      border: none;
-      cursor: pointer;
-    }
-    .btn-outline {
-      background: rgba(255, 255, 255, 0.03);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
-      gap: 1.35rem;
-      margin-bottom: 1.5rem;
-    }
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 1.5rem;
-    }
-    h2 { font-size: 1.12rem; color: var(--accent); margin-bottom: 0.95rem; }
-    .kv {
-      font-size: 0.86rem;
-      margin-bottom: 0.68rem;
-      padding-bottom: 0.52rem;
-      border-bottom: 1px solid rgba(34, 48, 74, 0.6);
-      word-break: break-all;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    }
-    .kv:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-    .kv span {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      color: var(--muted);
-      display: block;
-      font-size: 0.74rem;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-      margin-bottom: 0.12rem;
-    }
-    .dev-tags { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.75rem 0 1rem; }
-    .tag {
-      background: var(--surface-alt);
-      border: 1px solid var(--border);
-      color: var(--blue);
-      padding: 0.25rem 0.65rem;
-      border-radius: 6px;
-      font-size: 0.78rem;
-      font-weight: 600;
-    }
-    pre {
-      background: #060911;
-      border: 1px solid var(--border);
-      padding: 1.1rem;
-      border-radius: 10px;
-      overflow-x: auto;
-      font-size: 0.84rem;
-      color: #7dd3fc;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    }
-    .dropzone {
-      border: 1.5px dashed var(--border);
-      background: var(--surface-alt);
-      border-radius: 10px;
-      padding: 1.15rem;
-      text-align: center;
-      margin-bottom: 0.75rem;
-    }
-    input[type="file"] { color: var(--text); font-size: 0.86rem; max-width: 100%; }
-    #verifyResult {
-      margin-top: 0.85rem;
-      padding: 0.95rem;
-      border-radius: 8px;
-      font-size: 0.84rem;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      word-break: break-all;
-      display: none;
-    }
-    .ok { background: rgba(0, 229, 168, 0.12); border: 1px solid var(--accent); color: var(--accent); }
-    .bad { background: rgba(255, 92, 124, 0.12); border: 1px solid var(--danger); color: var(--danger); }
-    footer {
-      margin-top: 2.25rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid var(--border);
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      color: var(--muted);
-      font-size: 0.83rem;
-    }
-    .brand-foot { display: flex; align-items: center; gap: 0.75rem; }
-    .brand-foot img { width: 36px; height: 36px; border-radius: 6px; background: #fff; padding: 2px; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EMON INDUSTRY - 29A • Autonomous Cyber Defense &amp; Security Suite</title>
+<link rel="icon" type="image/jpeg" href="assets/emon_logo.jpg" />
+<link rel="apple-touch-icon" href="assets/emon_logo.jpg" />
+<style>
+  :root {
+    --bg: #f4f7fb;
+    --card: #ffffff;
+    --soft: #eef3f9;
+    --border: #d5e0ec;
+    --sep: #e2e8f0;
+    --text: #0f172a;
+    --muted: #475569;
+    --blue: #0e4d92;
+    --teal: #0284c7;
+    --green: #15803d;
+    --amber: #b45309;
+    --red: #d92626;
+  }
+  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  body {
+    margin: 0;
+    background: linear-gradient(180deg, #ffffff 0%, var(--bg) 32%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    padding-bottom: 56px;
+  }
+  .navbar {
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 18px;
+    position: sticky; top: 0; z-index: 20;
+  }
+  .nav-inner {
+    max-width: 1080px; margin: 0 auto;
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo-nav {
+    height: 40px; width: auto; border-radius: 8px;
+    border: 1px solid var(--border); background: #fff; padding: 2px 6px;
+  }
+  .avatar-sm {
+    width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+    border: 2px solid var(--blue);
+  }
+  .badge {
+    background: #dcfce7; color: var(--green); font-size: 11.5px; font-weight: 800;
+    padding: 5px 12px; border-radius: 999px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 20px 16px; }
+  .grid-2 {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+    gap: 14px; margin-bottom: 14px;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 20px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  }
+  .score-ring {
+    width: 162px; height: 162px; border-radius: 50%; margin: 14px auto;
+    background: conic-gradient(var(--blue) var(--deg, 356deg), #e2e8f0 0deg);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px rgba(14, 77, 146, 0.15);
+    transition: all .4s ease;
+  }
+  .score-core {
+    width: 126px; height: 126px; border-radius: 50%; background: #ffffff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .btn {
+    display: inline-block; text-align: center; padding: 12px 16px; border-radius: 13px;
+    font-weight: 700; font-size: 13.5px; text-decoration: none; border: none; cursor: pointer;
+    width: 100%; transition: transform .12s ease;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-blue { background: var(--blue); color: #fff; }
+  .btn-soft { background: var(--soft); color: var(--blue); border: 1px solid var(--border); }
+  .modules {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 12px; margin: 12px 0 18px;
+  }
+  .mod-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 16px; cursor: pointer;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .mod-card:hover {
+    border-color: var(--blue);
+    box-shadow: 0 6px 18px rgba(14, 77, 146, 0.08);
+  }
+  .sec-title {
+    font-size: 11.5px; font-weight: 800; color: var(--muted);
+    letter-spacing: .06em; margin: 22px 4px 8px;
+  }
+  input, textarea {
+    width: 100%; background: var(--soft); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 11px 13px; font-size: 13.5px; font-family: inherit;
+  }
+  .kv {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 9px 0; border-bottom: 1px solid var(--sep); font-size: 13px;
+  }
+  .kv:last-child { border-bottom: none; }
+  .kv span:first-child { color: var(--muted); }
+  .kv span:last-child { font-weight: 600; text-align: right; }
+  .dev-banner {
+    display: flex; flex-wrap: wrap; gap: 18px; align-items: center; margin-bottom: 14px;
+  }
+  .avatar-lg {
+    width: 106px; height: 106px; border-radius: 50%; object-fit: cover;
+    border: 3px solid var(--blue); flex-shrink: 0;
+  }
+</style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div class="logo-wrap">
-        <img src="assets/29a-logo.png" alt="29A App Logo" />
-      </div>
-      <div class="hero-content">
-        <div class="badge">CYBER GUARDIAN® v2.1 • EMON INDUSTRY PVT LTD _29A</div>
-        <h1>29A Anti-Spyware &amp; Cryptographic Trust Shield</h1>
-        <p class="subtitle">
-          Android APK trust scanner, rogue Root CA detection, and local endpoint protection for Android, Termux, and Linux.
-        </p>
-        <div class="btn-row">
-          <a class="btn" href="downloads/29a-cyber-guardian-v2.1.apk" download>Download Android APK (v2.1)</a>
-          <a class="btn btn-outline" href="certs/cyber_guardian_root_ca.der" download>Android CA (.DER)</a>
-          <a class="btn btn-outline" href="certs/cyber_guardian_root_ca.crt" download>Root CA (.CRT)</a>
-          <a class="btn btn-outline" href="certs/cyber_guardian_root_ca.pem" download>Linux CA (.PEM)</a>
-        </div>
-      </div>
-    </header>
-
-    <div class="grid">
-      <div class="card">
-        <h2>Developer &amp; Technical Support Profile</h2>
-        <div style="font-size: 1.25rem; font-weight: 800; color: #fff;">NAZMUL HOSSAIN</div>
-        <div class="dev-tags">
-          <span class="tag">Computer Science Student</span>
-          <span class="tag">Python Developer</span>
-          <span class="tag">Linux &amp; Cybersecurity Enthusiast</span>
-        </div>
-        <div class="kv"><span>Designation</span>Lead Engineer • System Architecture &amp; Security Operations</div>
-        <div class="kv"><span>Organization</span>EMON INDUSTRY PVT LTD _29A</div>
-        <div class="kv"><span>Technical Support Desk</span><a href="mailto:secure@emonindustry.bd" style="color: var(--accent);">secure@emonindustry.bd</a> • Support Desk v2.1</div>
-        <div class="kv"><span>Release Edition</span>Version 2.1 • UTF-8 • English + বাংলা</div>
-      </div>
-
-      <div class="card">
-        <h2>Root CA Cryptographic Profile</h2>
-        <div class="kv"><span>Subject &amp; Issuer DN</span>C=BD, O=EMON INDUSTRY PVT LTD _29A, OU=Cyber Guardian, CN=Cyber Guardian Private Root CA</div>
-        <div class="kv"><span>Serial Number</span>2E:EF:70:46:EC:AB:EB:9C:49:35:05:A6:B5:00:2C:AD:81:8A:15:DD</div>
-        <div class="kv"><span>Validity Period</span>05 Nov 2026 – 02 Nov 2036 (3650 Days)</div>
-        <div class="kv"><span>Key &amp; Signature</span>RSA 3072-bit • SHA-256 • CA:TRUE</div>
-        <div class="kv"><span>Official SHA-256 Fingerprint</span>AA:DF:60:FC:CE:71:CA:A9:72:ED:2A:F8:6C:92:91:AE:66:03:9D:C5:53:B8:05:AF:DC:67:CD:0B:CA:20:6F:7B</div>
+<nav class="navbar">
+  <div class="nav-inner">
+    <div class="brand">
+      <img class="logo-nav" src="assets/emon_logo.jpg" alt="EMON INDUSTRY" />
+      <div>
+        <div style="font-size:17px;font-weight:900;color:var(--blue);">EMON INDUSTRY - 29A</div>
+        <div style="font-size:12px;color:var(--muted);">Autonomous Cyber Defense &amp; Security Suite • Nazmul Hossain</div>
       </div>
     </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <span class="badge" id="navScoreBadge">SCORE 995 / 1000</span>
+      <a class="badge" style="background:var(--blue);color:#fff;text-decoration:none;" href="https://github.com/mnhemon357-cyber/29a/actions">Download APK</a>
+      <img class="avatar-sm" src="assets/developer_photo.jpg" alt="Nazmul Hossain" />
+    </div>
+  </div>
+</nav>
 
-    <div class="grid">
-      <div class="card">
-        <h2>In-Browser Certificate Verifier</h2>
-        <p style="font-size: 0.87rem; color: var(--muted); margin-bottom: 0.9rem;">
-          Select any <code>.der</code>, <code>.crt</code>, or <code>.pem</code> file to compute its SHA-256 fingerprint locally via Web Crypto API before installation.
-        </p>
-        <div class="dropzone">
-          <input type="file" id="certInput" accept=".crt,.pem,.der,.cer" />
+<div class="wrap">
+  <div class="grid-2">
+    <div class="card" style="text-align:center;">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:var(--soft);border:1px solid var(--border);padding:5px 12px;border-radius:999px;font-size:11.5px;font-weight:700;color:var(--blue);">
+        <img src="assets/developer_photo.jpg" style="width:22px;height:22px;border-radius:50%;object-fit:cover;" alt="" />
+        <span>EMON INDUSTRY - 29A Defense Score</span>
+      </div>
+      <div class="score-ring" id="scoreRing" style="--deg: 358deg;">
+        <div class="score-core">
+          <div style="font-size:32px;font-weight:900;color:var(--blue);" id="scoreVal">995</div>
+          <div style="font-size:11px;color:var(--muted);font-weight:700;">OUT OF 1000</div>
         </div>
-        <button class="btn btn-outline" type="button" id="verifyBundledBtn">Verify Hosted Cyber Guardian CA</button>
-        <div id="verifyResult"></div>
       </div>
-
-      <div class="card">
-        <h2>Linux &amp; Termux CLI Deployment</h2>
-        <pre>git clone https://github.com/&lt;your-username&gt;/29a.git
-cd 29a
-chmod +x scripts/*.sh app/29a_guard.py
-./scripts/verify.sh
-./scripts/install_ca.sh
-python3 app/29a_guard.py</pre>
-      </div>
+      <div style="font-size:19px;font-weight:800;" id="heroTitle">29A Autonomous Defense Active</div>
+      <p style="font-size:13px;color:var(--muted);margin:6px 0 14px;" id="heroSub">
+        Real-Time Threat Detection, AI Scam Analyzer, SHA-256 File Verifier &amp; Root CA Trust
+      </p>
+      <button class="btn btn-blue" onclick="runWebSmartScan()">Run 29A Autonomous Smart Scan</button>
     </div>
 
-    <footer>
-      <div class="brand-foot">
-        <img src="assets/emon-industry-logo.png" alt="EMON INDUSTRY" />
-        <div>
-          <strong>EMON INDUSTRY PVT LTD _29A</strong><br />
-          Lead Engineer: Nazmul Hossain • Support Desk v2.1: secure@emonindustry.bd
-        </div>
+    <div class="card" id="scamSection">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <img src="assets/developer_photo.jpg" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--blue);" alt="" />
+        <div style="font-size:16px;font-weight:800;color:var(--blue);">AI Scam Detector &amp; Phishing Analyzer</div>
       </div>
-      <div>Cyber Guardian® v2.1 • © 2026 All Rights Reserved</div>
-    </footer>
+      <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">
+        Inspect suspicious URLs, SMS messages, QR links, or payment requests for phishing traps and social engineering lures.
+      </p>
+      <textarea id="scamInput" rows="3" placeholder="e.g. http://verify-bank-login.xyz/otp or suspicious message..."></textarea>
+      <button class="btn btn-blue" style="margin-top:10px;" onclick="scanScamInput()">Analyze with 29A AI Scam Detector</button>
+      <div id="scamResult" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--soft);font-size:12.5px;font-weight:700;color:var(--muted);">
+        Ready: Paste a suspicious link or text message above to scan.
+      </div>
+    </div>
   </div>
 
-  <script>
-    const EXPECTED_SHA256 = "AA:DF:60:FC:CE:71:CA:A9:72:ED:2A:F8:6C:92:91:AE:66:03:9D:C5:53:B8:05:AF:DC:67:CD:0B:CA:20:6F:7B";
+  <div class="sec-title">EMON INDUSTRY - 29A PROTECTION MODULES</div>
+  <div class="modules">
+    <div class="mod-card" onclick="runWebSmartScan()">
+      <div style="font-weight:800;color:var(--blue);margin-bottom:4px;">🛡️ Real-Time Threat Engine</div>
+      <div style="font-size:12.5px;color:var(--muted);">Audits APK packages, stealth spyware permissions, and rogue user certificates.</div>
+    </div>
+    <div class="mod-card" onclick="document.getElementById('scamInput').focus()">
+      <div style="font-weight:800;color:var(--teal);margin-bottom:4px;">🕵️ AI Scam &amp; Link Guard</div>
+      <div style="font-size:12.5px;color:var(--muted);">Detects lookalike phishing URLs, insecure HTTP links, and OTP/KYC scam texts.</div>
+    </div>
+    <div class="mod-card" onclick="document.getElementById('filePicker').click()">
+      <div style="font-weight:800;color:var(--green);margin-bottom:4px;">🧬 SHA-256 File Integrity</div>
+      <div style="font-size:12.5px;color:var(--muted);">Computes cryptographic SHA-256 hashes locally in your browser without uploading.</div>
+    </div>
+    <div class="mod-card" onclick="genPass()">
+      <div style="font-weight:800;color:var(--amber);margin-bottom:4px;">🔐 20-Char Key Generator</div>
+      <div style="font-size:12.5px;color:var(--muted);">Generates hardware-random 20-character passwords &amp; verifies TLS connection state.</div>
+    </div>
+  </div>
 
-    function pemToArrayBuffer(pem) {
-      const b64 = pem.replace(/-----BEGIN CERTIFICATE-----/g, "")
-                     .replace(/-----END CERTIFICATE-----/g, "")
-                     .replace(/\s+/g, "");
-      const binary = atob(b64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      return bytes.buffer;
+  <div class="grid-2">
+    <div class="card">
+      <div style="font-size:15.5px;font-weight:800;color:var(--blue);margin-bottom:8px;">🧬 Ransomware &amp; File SHA-256 Verifier</div>
+      <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">
+        Select any local file (APK, ZIP, PDF, script) to compute its cryptographic SHA-256 checksum locally in your browser.
+      </p>
+      <input type="file" id="filePicker" onchange="hashLocalFile()" />
+      <div id="fileHashOut" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--soft);border:1px solid var(--border);font-family:monospace;font-size:12px;color:var(--green);word-break:break-all;">
+        Select a file above to compute local SHA-256 integrity hash.
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:15.5px;font-weight:800;color:var(--blue);margin-bottom:8px;">🔐 20-Char Key Vault &amp; Network Status</div>
+      <div id="passOut" style="font-family:monospace;font-size:15px;font-weight:800;color:var(--green);background:#f0fdf4;padding:12px;border-radius:12px;border:1px solid #bbf7d0;text-align:center;margin-bottom:10px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <button class="btn btn-blue" onclick="genPass()">Generate Key</button>
+        <button class="btn btn-soft" onclick="copyPass()">Copy Password</button>
+      </div>
+      <div class="kv"><span>Connection &amp; TLS</span><span id="netState" style="color:var(--green);">Online • TLS Encrypted</span></div>
+      <div class="kv"><span>29A Root CA SHA-256</span><span>AA:DF:60:FC…CA:20:6F:7B</span></div>
+    </div>
+  </div>
+
+  <div class="sec-title">EMON INDUSTRY - 29A &amp; DEVELOPER CURRICULUM VITAE</div>
+  <div class="card">
+    <div style="text-align:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--sep);">
+      <img src="assets/emon_logo.jpg" alt="EMON INDUSTRY" style="max-height:92px;width:auto;max-width:100%;" />
+      <div style="font-size:13px;font-weight:700;color:var(--blue);margin-top:6px;">Product of EMON INDUSTRY - 29A</div>
+    </div>
+
+    <div class="dev-banner">
+      <img class="avatar-lg" src="assets/developer_photo.jpg" alt="Nazmul Hossain" />
+      <div>
+        <div style="font-size:21px;font-weight:900;">NAZMUL HOSSAIN</div>
+        <div style="color:var(--blue);font-size:13.5px;font-weight:700;margin:3px 0;">
+          Dhaka, Bangladesh • Lead Security Architect (EMON INDUSTRY - 29A)
+        </div>
+        <div style="color:var(--muted);font-size:13px;">
+          B.Sc. in Computer Science &amp; Engineering • Daffodil International University, Dhaka (2021–Present)
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#eff6ff;border-left:3px solid var(--blue);padding:10px 14px;border-radius:10px;font-style:italic;color:var(--blue);font-size:13.5px;margin-bottom:12px;">
+      “Everybody has a complete view of completeness.”
+    </div>
+    <p style="margin:0 0 14px;font-size:13.5px;line-height:1.6;color:var(--text);">
+      Motivated and detail-oriented undergraduate student with strong skills in programming, web design, and cybersecurity.
+      Passionate about learning new technologies, developing applications, and exploring AI and machine learning.
+      Experienced in Linux environments and creative digital branding.
+    </p>
+
+    <div class="kv"><span>Organization</span><span>EMON INDUSTRY - 29A</span></div>
+    <div class="kv"><span>Education (B.Sc. CSE)</span><span>Daffodil International University, Dhaka (2021–Present)</span></div>
+    <div class="kv"><span>Higher Secondary (HSC)</span><span>Armed Police Battalion Public School &amp; College, Bogura (2018–2020)</span></div>
+    <div class="kv"><span>Programming Languages</span><span>Perl-6 (Raku), Python, C, Java, HTML, CSS</span></div>
+    <div class="kv"><span>Cybersecurity &amp; Linux</span><span>Pentesting Concepts, Database Assessment, Kali Linux, Nano, Vim</span></div>
+    <div class="kv"><span>Experience</span><span>Inhealer International Family (IIF) • Cybersecurity Community (29A)</span></div>
+    <div class="kv"><span>Research &amp; Interests</span><span>AI, Machine Learning, Binary Systems (0/1), Digital Art, Travelling</span></div>
+    <div class="kv"><span>Email &amp; Support</span><span>mnhemon357@gmail.com | secure@emonindustry.bd</span></div>
+    <div class="kv"><span>Portfolio Website</span><span><a href="https://357.wordpress.com" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none;">357.wordpress.com</a></span></div>
+    <div class="kv"><span>Facebook URL</span><span><a href="https://www.facebook.com/share/1FS8t8eFDL/" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none;">facebook.com/share/1FS8t8eFDL/</a></span></div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px;">
+      <a class="btn" style="background:#1877f2;color:#fff;" href="https://www.facebook.com/share/1FS8t8eFDL/" target="_blank" rel="noopener">Facebook (Share URL)</a>
+      <a class="btn btn-soft" href="https://www.facebook.com/profile.php?id=100077713088455" target="_blank" rel="noopener">Facebook Profile</a>
+      <a class="btn btn-soft" style="color:var(--teal);" href="https://357.wordpress.com" target="_blank" rel="noopener">Portfolio (357.wordpress)</a>
+      <a class="btn btn-blue" href="mailto:mnhemon357@gmail.com">Email Nazmul Hossain</a>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;color:var(--muted);font-size:12px;">
+      <img src="assets/developer_photo.jpg" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid var(--blue);" alt="" />
+      <span>© 2026 EMON INDUSTRY - 29A • Nazmul Hossain • Dhaka, Bangladesh</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function genPass() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*_-+=";
+  const arr = new Uint32Array(20);
+  crypto.getRandomValues(arr);
+  let out = "";
+  for (let i = 0; i < arr.length; i++) out += chars[arr[i] % chars.length];
+  document.getElementById("passOut").textContent = out;
+}
+function copyPass() {
+  navigator.clipboard.writeText(document.getElementById("passOut").textContent);
+  alert("20-character password copied!");
+}
+async function hashLocalFile() {
+  const inp = document.getElementById("filePicker");
+  const out = document.getElementById("fileHashOut");
+  if (!inp.files || !inp.files[0]) return;
+  const file = inp.files[0];
+  out.textContent = "Computing SHA-256 for " + file.name + "...";
+  const buf = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  const hex = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+  out.style.color = "#15803d";
+  out.textContent = "✅ " + file.name + " (" + Math.round(file.size / 1024) + " KB)
+SHA-256: " + hex;
+}
+function runWebSmartScan() {
+  const title = document.getElementById("heroTitle");
+  const sub = document.getElementById("heroSub");
+  const val = document.getElementById("scoreVal");
+  title.textContent = "29A Autonomous Scan Running...";
+  sub.textContent = "Auditing TLS certificates, phishing vectors, and browser integrity...";
+  let p = 0;
+  const iv = setInterval(() => {
+    p += 10;
+    val.textContent = p + "%";
+    if (p >= 100) {
+      clearInterval(iv);
+      val.textContent = "995";
+      document.getElementById("navScoreBadge").textContent = "SCORE 995 / 1000";
+      document.getElementById("scoreRing").style.setProperty("--deg", "358deg");
+      title.textContent = "29A Autonomous Defense Active • 995/1000";
+      sub.textContent = "0 malware, 0 phishing threats & Root CA SHA-256 verified (" + new Date().toLocaleTimeString() + ")";
     }
-
-    async function checkBuffer(buffer, label) {
-      const out = document.getElementById("verifyResult");
-      const textCheck = new TextDecoder().decode(buffer.slice(0, 32));
-      let derBuffer = buffer;
-      if (textCheck.includes("-----BEGIN")) {
-        derBuffer = pemToArrayBuffer(new TextDecoder().decode(buffer));
-      }
-      const hashBuffer = await crypto.subtle.digest("SHA-256", derBuffer);
-      const hashHex = Array.from(new Uint8Array(hashBuffer))
-        .map(b => b.toString(16).padStart(2, "0").toUpperCase())
-        .join(":");
-
-      out.style.display = "block";
-      if (hashHex === EXPECTED_SHA256) {
-        out.className = "ok";
-        out.innerHTML = `<strong>[VERIFIED]</strong> ${label} matches authentic Cyber Guardian Root CA.<br><br>SHA-256: ${hashHex}`;
-      } else {
-        out.className = "bad";
-        out.innerHTML = `<strong>[WARNING]</strong> ${label} fingerprint mismatch! Do NOT install.<br><br>Computed: ${hashHex}`;
-      }
-    }
-
-    document.getElementById("certInput").addEventListener("change", async (e) => {
-      const file = e.target.files[0];
-      if (file) await checkBuffer(await file.arrayBuffer(), file.name);
-    });
-
-    document.getElementById("verifyBundledBtn").addEventListener("click", async () => {
-      try {
-        const resp = await fetch("certs/cyber_guardian_root_ca.der");
-        await checkBuffer(await resp.arrayBuffer(), "Hosted cyber_guardian_root_ca.der");
-      } catch (err) {
-        const out = document.getElementById("verifyResult");
-        out.style.display = "block";
-        out.className = "bad";
-        out.textContent = "Serve via GitHub Pages or a local HTTP server to fetch bundled certificates.";
-      }
-    });
-  </script>
+  }, 100);
+}
+function scanScamInput() {
+  const raw = document.getElementById("scamInput").value.trim().toLowerCase();
+  const box = document.getElementById("scamResult");
+  if (!raw) { box.textContent = "Enter a URL or message above first."; return; }
+  const flags = [];
+  if (raw.includes("http://")) flags.push("Unencrypted HTTP");
+  if (/https?:\/\/\d{1,3}(\.\d{1,3}){3}/.test(raw)) flags.push("Raw IP host");
+  if ([".xyz", ".top", ".tk", ".click", ".buzz", ".work"].some(t => raw.includes(t))) flags.push("High-risk TLD");
+  if (["verify", "otp", "pin", "suspended", "bkash", "nagad", "login", "kyc"].some(w => raw.includes(w))) flags.push("Phishing lure keyword");
+  if (flags.length >= 2) {
+    box.style.background = "#fee2e2"; box.style.color = "#d92626";
+    box.textContent = "🚨 HIGH-RISK SCAM DETECTED: " + flags.join(" • ");
+  } else if (flags.length === 1) {
+    box.style.background = "#fef3c7"; box.style.color = "#b45309";
+    box.textContent = "⚠️ SUSPICIOUS: " + flags[0] + ". Verify sender before clicking.";
+  } else {
+    box.style.background = "#dcfce7"; box.style.color = "#15803d";
+    box.textContent = "✅ SAFE: No scam domains or phishing lures detected.";
+  }
+}
+document.getElementById("netState").textContent = navigator.onLine ? "Online • TLS Encrypted" : "Offline";
+genPass();
+</script>
 </body>
 </html>

@@ -1,0 +1,25 @@
+{
+  "name": "29A \u2022 Darktrace & McAfee+ Cyber Guardian",
+  "short_name": "29A Guardian",
+  "description": "Enterprise Immune System, Antigena Autonomous Response, AI Scam Detector & Cryptographic Security Suite by Nazmul Hossain",
+  "start_url": "/29a/",
+  "scope": "/29a/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e17",
+  "theme_color": "#c01818",
+  "icons": [
+    {
+      "src": "assets/developer_photo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/developer_photo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

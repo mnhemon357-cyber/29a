@@ -1,7 +1,7 @@
 {
-  "name": "29A \u2022 Darktrace & McAfee+ Cyber Guardian",
-  "short_name": "29A Guardian",
-  "description": "Enterprise Immune System, Antigena Autonomous Response, AI Scam Detector & Cryptographic Security Suite by Nazmul Hossain",
+  "name": "29A \u2022 SOC Cyber Guardian\u00ae Security Suite",
+  "short_name": "29A SOC Guard",
+  "description": "Anti-Malware, Bloatware, Ransomware SOC Detection, Darktrace AI & Root CA Download Hub",
   "start_url": "/29a/",
   "scope": "/29a/",
   "display": "standalone",

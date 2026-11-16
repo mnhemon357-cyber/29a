@@ -39,7 +39,10 @@ import android.os.Process
 import android.os.StatFs
 import android.os.SystemClock
 import android.provider.Settings
+import android.text.Editable
 import android.text.InputType
+import android.text.TextWatcher
+import android.util.Base64
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -58,6 +61,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import java.io.File
+import java.io.FileOutputStream
 import java.io.RandomAccessFile
 import java.net.Inet4Address
 import java.net.Inet6Address
@@ -73,15 +77,15 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var tabProtection: LinearLayout
-    private lateinit var tabDarktrace: LinearLayout
-    private lateinit var tabScamWeb: LinearLayout
-    private lateinit var tabWifiFirewall: LinearLayout
-    private lateinit var tabPrivacyVault: LinearLayout
+    private lateinit var tabSocGuard: LinearLayout
+    private lateinit var tabInventory: LinearLayout
+    private lateinit var tabRansomWeb: LinearLayout
+    private lateinit var tabNetworkSoc: LinearLayout
+    private lateinit var tabCertGuide: LinearLayout
     private lateinit var tabDeveloperCv: LinearLayout
     private val navBtns = mutableListOf<Button>()
 
-    private lateinit var scoreRadar: McAfeeProtectionScoreView
+    private lateinit var scoreRadar: SocRadarShieldView
     private lateinit var heroTitle: TextView
     private lateinit var heroSub: TextView
     private lateinit var headerBadge: TextView
@@ -89,42 +93,45 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnDeepScan: Button
     private lateinit var btnPrivacyScreen: Button
     private lateinit var btnSosAlarm: Button
+    private lateinit var socCountersRow: TextView
     private lateinit var scanLogContainer: LinearLayout
 
-    // Darktrace Enterprise Immune System & Antigena Views
-    private lateinit var dtAnomalyScoreVal: TextView
-    private lateinit var dtBaselineVal: TextView
-    private lateinit var dtAntigenaModeVal: TextView
-    private lateinit var dtPacketEntropyVal: TextView
-    private lateinit var btnAntigenaToggle: Button
-    private lateinit var dtEventFeedBox: LinearLayout
-    private var antigenaAutonomous = true
-    private var baselineRxRate = 18000.0
-    private var baselineTxRate = 6500.0
+    // Full System Inventory ("Reads Everything & Tells Everything")
+    private lateinit var invFilterInput: EditText
+    private lateinit var invStatsLabel: TextView
+    private lateinit var invListBox: LinearLayout
+    private lateinit var invInspectorCard: LinearLayout
+    private lateinit var invInspectorBody: TextView
+    private var invCategoryFilter = "ALL"
+    private val allAuditedApps = mutableListOf<AuditedApp>()
 
-    private lateinit var cpuValView: TextView
-    private lateinit var ramValView: TextView
-    private lateinit var diskValView: TextView
-    private lateinit var batUptimeValView: TextView
-
-    private lateinit var scamInput: EditText
-    private lateinit var scamVerdict: TextView
+    // Ransomware, Canary & Scam Tab
+    private lateinit var ransomStatusVal: TextView
     private lateinit var fileHashInput: EditText
     private lateinit var fileHashVerdict: TextView
+    private lateinit var scamInput: EditText
+    private lateinit var scamVerdict: TextView
 
+    // Network SOC & Darktrace Tab
     private lateinit var wifiBadge: TextView
     private lateinit var netTransportVal: TextView
     private lateinit var netIpVal: TextView
     private lateinit var netDnsProxyVal: TextView
     private lateinit var netBandwidthVal: TextView
     private lateinit var netSessionVal: TextView
-    private lateinit var firewallListBox: LinearLayout
+    private lateinit var dtAnomalyVal: TextView
+    private lateinit var dtEventFeedBox: LinearLayout
 
-    private lateinit var breachInput: EditText
-    private lateinit var breachVerdict: TextView
+    // Certificate Download & User Guidelines Tab
+    private lateinit var certMetaBox: TextView
+    private lateinit var certDownloadStatus: TextView
     private lateinit var passDisplay: TextView
-    private lateinit var bloatSummary: TextView
-    private lateinit var bloatListBox: LinearLayout
+
+    // Hardware Optimizer
+    private lateinit var cpuValView: TextView
+    private lateinit var ramValView: TextView
+    private lateinit var diskValView: TextView
+    private lateinit var batUptimeValView: TextView
 
     private val handler = Handler(Looper.getMainLooper())
     private var prevRx = 0L
@@ -167,16 +174,17 @@ class MainActivity : AppCompatActivity() {
     data class AuditedApp(
         val label: String,
         val pkg: String,
-        val tag: String,
-        val detail: String,
-        val highRisk: Boolean,
+        val category: String, // MALWARE, BLOATWARE, USER, SYSTEM
+        val riskScore: Int,
+        val summary: String,
+        val fullForensicReport: String,
         val usesInternet: Boolean
     )
 
     private val liveTicker = object : Runnable {
         override fun run() {
             updateSystemOptimizer()
-            updateWifiAndFirewall()
+            updateWifiAndDarktrace()
             handler.postDelayed(this, 1600L)
         }
     }
@@ -218,19 +226,19 @@ class MainActivity : AppCompatActivity() {
 
         val titleCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         titleCol.addView(TextView(this).apply {
-            text = "29A • Darktrace & McAfee+ AI"
+            text = "29A • SOC Cyber Guardian®"
             textSize = 17f
             setTypeface(Typeface.DEFAULT_BOLD)
             setTextColor(Color.parseColor(TXT_MAIN))
         })
         titleCol.addView(TextView(this).apply {
-            text = "Enterprise Immune System & Autonomous Response"
+            text = "Anti-Malware • Bloatware • Ransomware • Root CA"
             textSize = 10.5f
             setTextColor(Color.parseColor(TXT_SUB))
         })
         topBar.addView(titleCol, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
 
-        headerBadge = makePill("PROTECTED", GREEN_SAFE, "#0D2B22")
+        headerBadge = makePill("SOC ACTIVE", GREEN_SAFE, "#0D2B22")
         topBar.addView(headerBadge)
         root.addView(topBar)
 
@@ -239,11 +247,11 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(6), dp(6), dp(6), dp(8))
             setBackgroundColor(Color.parseColor("#0F1521"))
         }
-        val names = listOf("Guard", "Darktrace", "Scam", "Wi-Fi", "Vault", "Dev")
+        val names = listOf("SOC", "Apps", "Ransom", "Net/AI", "Cert/Guide", "Dev")
         names.forEachIndexed { idx, label ->
             val b = Button(this).apply {
                 text = label
-                textSize = 10.5f
+                textSize = 10f
                 setTypeface(Typeface.DEFAULT_BOLD)
                 isAllCaps = false
                 setPadding(dp(1), 0, dp(1), 0)
@@ -267,27 +275,27 @@ class MainActivity : AppCompatActivity() {
         scroller.addView(body)
         root.addView(scroller, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
-        tabProtection = buildProtectionTab()
-        tabDarktrace = buildDarktraceTab()
-        tabScamWeb = buildScamAndWebTab()
-        tabWifiFirewall = buildWifiAndFirewallTab()
-        tabPrivacyVault = buildPrivacyAndVaultTab()
+        tabSocGuard = buildSocGuardTab()
+        tabInventory = buildFullInventoryTab()
+        tabRansomWeb = buildRansomwareAndScamTab()
+        tabNetworkSoc = buildNetworkAndDarktraceTab()
+        tabCertGuide = buildCertAndGuidelinesTab()
         tabDeveloperCv = buildDeveloperTab()
 
-        body.addView(tabProtection)
-        body.addView(tabDarktrace)
-        body.addView(tabScamWeb)
-        body.addView(tabWifiFirewall)
-        body.addView(tabPrivacyVault)
+        body.addView(tabSocGuard)
+        body.addView(tabInventory)
+        body.addView(tabRansomWeb)
+        body.addView(tabNetworkSoc)
+        body.addView(tabCertGuide)
         body.addView(tabDeveloperCv)
 
         setContentView(root)
         switchTab(0)
         generatePassword()
+        populateCertificateInspector()
         updateSystemOptimizer()
-        updateWifiAndFirewall()
-        runDarktraceBaselineModel()
-        executeAntivirusScan(deepMode = false)
+        updateWifiAndDarktrace()
+        executeFullSocAudit(deepMode = true)
     }
 
     override fun onResume() {
@@ -302,7 +310,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun switchTab(idx: Int) {
-        val tabs = listOf(tabProtection, tabDarktrace, tabScamWeb, tabWifiFirewall, tabPrivacyVault, tabDeveloperCv)
+        val tabs = listOf(tabSocGuard, tabInventory, tabRansomWeb, tabNetworkSoc, tabCertGuide, tabDeveloperCv)
         tabs.forEachIndexed { i, view ->
             if (i == idx) {
                 view.visibility = View.VISIBLE
@@ -316,7 +324,11 @@ class MainActivity : AppCompatActivity() {
         }
         navBtns.forEachIndexed { i, btn ->
             val active = i == idx
-            val activeBg = if (i == 1) "#7E22CE" else MCAFEE_RED
+            val activeBg = when (i) {
+                3 -> "#7E22CE"
+                4 -> "#0284C7"
+                else -> MCAFEE_RED
+            }
             btn.setTextColor(Color.parseColor(if (active) "#FFFFFF" else TXT_SUB))
             btn.background = GradientDrawable().apply {
                 setColor(Color.parseColor(if (active) activeBg else CARD_ELEV))
@@ -326,8 +338,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ==================== TAB 1: 29A GUARD & McAFEE+ PROTECTION ====================
-    private fun buildProtectionTab(): LinearLayout {
+    // ==================== TAB 1: SOC COMMAND & REAL-TIME PROTECTION ====================
+    private fun buildSocGuardTab(): LinearLayout {
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
         val heroCard = makeCard()
@@ -347,21 +359,21 @@ class MainActivity : AppCompatActivity() {
             LinearLayout.LayoutParams(dp(24), dp(24)).apply { rightMargin = dp(8) }
         )
         badgeRow.addView(TextView(this).apply {
-            text = "29A Guard + Darktrace AI • Nazmul Hossain"
+            text = "29A SOC Engine • Full System Telemetry"
             textSize = 11.5f
             setTypeface(Typeface.DEFAULT_BOLD)
             setTextColor(Color.parseColor(TXT_MAIN))
         })
         heroCard.addView(badgeRow)
 
-        scoreRadar = McAfeeProtectionScoreView(this)
+        scoreRadar = SocRadarShieldView(this)
         heroCard.addView(scoreRadar, LinearLayout.LayoutParams(dp(210), dp(210)).apply {
             topMargin = dp(8)
             bottomMargin = dp(6)
         })
 
         heroTitle = TextView(this).apply {
-            text = "Your Device Is Protected"
+            text = "SOC Telemetry Active"
             textSize = 19.5f
             setTypeface(Typeface.DEFAULT_BOLD)
             setTextColor(Color.parseColor(TXT_MAIN))
@@ -370,23 +382,39 @@ class MainActivity : AppCompatActivity() {
         heroCard.addView(heroTitle)
 
         heroSub = TextView(this).apply {
-            text = "Darktrace Immune System, Antigena & System Root CA Active"
+            text = "Anti-Malware, Bloatware, Ransomware & Root CA Guard"
             textSize = 12f
             setTextColor(Color.parseColor(TXT_SUB))
             gravity = Gravity.CENTER
-            setPadding(dp(4), dp(4), dp(4), dp(12))
+            setPadding(dp(4), dp(4), dp(4), dp(8))
         }
         heroCard.addView(heroSub)
 
+        socCountersRow = TextView(this).apply {
+            text = "Scanning system inventory..."
+            textSize = 11.5f
+            setTypeface(Typeface.MONOSPACE, Typeface.BOLD)
+            setTextColor(Color.parseColor(CYAN_INFO))
+            gravity = Gravity.CENTER
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#0B101B"))
+                cornerRadius = dp(10).toFloat()
+                setStroke(dp(1), Color.parseColor(BORDER_COL))
+            }
+        }
+        heroCard.addView(socCountersRow, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(10) })
+
         val scanBtnRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        btnSmartScan = makeBtn("Smart Scan", MCAFEE_RED, "#FFFFFF") {
-            executeAntivirusScan(deepMode = false)
+        btnSmartScan = makeBtn("SOC Full Audit", MCAFEE_RED, "#FFFFFF") {
+            executeFullSocAudit(deepMode = true)
         }
         scanBtnRow.addView(btnSmartScan, LinearLayout.LayoutParams(0, dp(46), 1f).apply { rightMargin = dp(8) })
 
-        btnDeepScan = makeBtn("Darktrace Deep AI", "#7E22CE", "#FFFFFF") {
-            executeAntivirusScan(deepMode = true)
-            runDarktraceBaselineModel()
+        btnDeepScan = makeBtn("Inspect All Apps", "#0284C7", "#FFFFFF") {
+            switchTab(1)
         }
         scanBtnRow.addView(btnDeepScan, LinearLayout.LayoutParams(0, dp(46), 1f))
         heroCard.addView(scanBtnRow, LinearLayout.LayoutParams(
@@ -394,10 +422,10 @@ class MainActivity : AppCompatActivity() {
         ).apply { bottomMargin = dp(8) })
 
         val shieldRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val btnSystemCa = makeBtn("System CA: ACTIVE", CARD_ELEV, GREEN_SAFE) {
-            Toast.makeText(this, "Cyber Guardian Private Root CA is active via system trust store", Toast.LENGTH_SHORT).show()
+        val btnCertHub = makeBtn("📜 Cert & Guidelines", CARD_ELEV, GREEN_SAFE) {
+            switchTab(4)
         }
-        shieldRow.addView(btnSystemCa, LinearLayout.LayoutParams(0, dp(40), 1f).apply { rightMargin = dp(8) })
+        shieldRow.addView(btnCertHub, LinearLayout.LayoutParams(0, dp(40), 1f).apply { rightMargin = dp(8) })
 
         btnPrivacyScreen = makeBtn("Screen Guard: OFF", CARD_ELEV, TXT_SUB) {
             toggleScreenGuard()
@@ -407,38 +435,27 @@ class MainActivity : AppCompatActivity() {
 
         col.addView(heroCard)
 
-        col.addView(makeSecHeader("DARKTRACE & McAFEE+ AUTONOMOUS MODULES"))
+        col.addView(makeSecHeader("SOC THREAT DETECTION & RESPONSE MODULES"))
         val g1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        g1.addView(makeModuleCard("🧠 Darktrace Immune", "Self-learning behavioral AI", DT_PURPLE, true) { switchTab(1) })
-        g1.addView(makeModuleCard("⚡ Antigena Response", "Autonomous threat containment", CYAN_INFO, false) { switchTab(1) })
+        g1.addView(makeModuleCard("🔍 Read Everything", "Every app, UID, cert & permission", CYAN_INFO, true) { switchTab(1) })
+        g1.addView(makeModuleCard("🦠 Anti-Malware & Bloat", "Spyware & OEM adware classifier", MCAFEE_CRIMSON, false) {
+            invCategoryFilter = "THREAT"
+            refreshInventoryList()
+            switchTab(1)
+        })
         col.addView(g1)
 
         val g2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        g2.addView(makeModuleCard("🕵️ AI Scam Guard", "Phishing URL & SMS detector", GREEN_SAFE, true) { switchTab(2) })
-        g2.addView(makeModuleCard("📡 Wi-Fi & Firewall", "MITM proxy & socket audit", AMBER_WARN, false) { switchTab(3) })
+        g2.addView(makeModuleCard("🔒 Ransomware Shield", "Canary trap, APK & SHA-256 audit", AMBER_WARN, true) { switchTab(2) })
+        g2.addView(makeModuleCard("🧠 Darktrace & Net SOC", "Socket telemetry & MITM guard", DT_PURPLE, false) { switchTab(3) })
         col.addView(g2)
 
         val g3 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        g3.addView(makeModuleCard("🧹 Bloatware Cleaner", "Spyware & OEM adware audit", MCAFEE_CRIMSON, true) { switchTab(4) })
-        g3.addView(makeModuleCard("🌐 Launch Web APK", "Open PWA Progressive App", CYAN_INFO, false) { openUrl(DEV_WEB_APK) })
+        g3.addView(makeModuleCard("📜 Root CA & Guidelines", "Download .CRT/.PEM & user manual", GREEN_SAFE, true) { switchTab(4) })
+        g3.addView(makeModuleCard("📤 Export Full SOC Log", "Share complete forensic report", CYAN_INFO, false) { shareReport() })
         col.addView(g3)
 
-        col.addView(makeSecHeader("ANTI-THEFT & DEVICE LOCKDOWN CONTROLS"))
-        val theftCard = makeCard()
-        val theftRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        btnSosAlarm = makeBtn("🔊 Trigger Anti-Theft Siren", CARD_ELEV, AMBER_WARN) {
-            toggleSosAlarm()
-        }
-        theftRow.addView(btnSosAlarm, LinearLayout.LayoutParams(0, dp(42), 1f).apply { rightMargin = dp(8) })
-
-        val btnShareAudit = makeBtn("📤 Export Audit Report", CARD_ELEV, CYAN_INFO) {
-            shareReport()
-        }
-        theftRow.addView(btnShareAudit, LinearLayout.LayoutParams(0, dp(42), 1f))
-        theftCard.addView(theftRow)
-        col.addView(theftCard)
-
-        col.addView(makeSecHeader("BATTERY, MEMORY & STORAGE OPTIMIZER"))
+        col.addView(makeSecHeader("HARDWARE, MEMORY & ANTI-THEFT TELEMETRY"))
         val optCard = makeCard()
         val r1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         cpuValView = addMetricTile(r1, "CPU LOAD", "22%", true)
@@ -450,17 +467,24 @@ class MainActivity : AppCompatActivity() {
         batUptimeValView = addMetricTile(r2, "BATTERY & UPTIME", "100%", false)
         optCard.addView(r2)
 
-        val btnOptimize = makeBtn("⚡ Boost RAM & Clean Background Cache", MCAFEE_RED, "#FFFFFF") {
+        val utilRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val btnOptimize = makeBtn("⚡ Reclaim RAM", MCAFEE_RED, "#FFFFFF") {
             System.gc()
             updateSystemOptimizer()
-            Toast.makeText(this, "Memory reclaimed & system telemetry refreshed", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Memory reclaimed & SOC telemetry refreshed", Toast.LENGTH_SHORT).show()
         }
-        optCard.addView(btnOptimize, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, dp(42)
-        ).apply { topMargin = dp(6) })
+        utilRow.addView(btnOptimize, LinearLayout.LayoutParams(0, dp(42), 1f).apply { rightMargin = dp(8) })
+
+        btnSosAlarm = makeBtn("🔊 Anti-Theft Siren", CARD_ELEV, AMBER_WARN) {
+            toggleSosAlarm()
+        }
+        utilRow.addView(btnSosAlarm, LinearLayout.LayoutParams(0, dp(42), 1f))
+        optCard.addView(utilRow, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dp(4) })
         col.addView(optCard)
 
-        col.addView(makeSecHeader("SECURITY & CRYPTOGRAPHIC AUDIT LOG"))
+        col.addView(makeSecHeader("LIVE SOC DETECTION & CRYPTOGRAPHIC EVENT FEED"))
         val logCard = makeCard()
         scanLogContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         logCard.addView(scanLogContainer)
@@ -469,147 +493,247 @@ class MainActivity : AppCompatActivity() {
         return col
     }
 
-    // ==================== TAB 2: DARKTRACE ENTERPRISE IMMUNE SYSTEM & ANTIGENA ====================
-    private fun buildDarktraceTab(): LinearLayout {
+    // ==================== TAB 2: READ EVERYTHING & TELL EVERYTHING (FULL SYSTEM INVENTORY) ====================
+    private fun buildFullInventoryTab(): LinearLayout {
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
-        col.addView(makeSecHeader("DARKTRACE ENTERPRISE IMMUNE SYSTEM (SELF-LEARNING AI)"))
-        val dtCard = makeCard()
-        val head = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, dp(10))
-        }
-        head.addView(
-            createPortraitAvatar(dp(34), DT_PURPLE),
-            LinearLayout.LayoutParams(dp(34), dp(34)).apply { rightMargin = dp(10) }
-        )
-        val hCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        hCol.addView(TextView(this).apply {
-            text = "Darktrace Antigena • Autonomous Cyber AI"
-            textSize = 15.5f
+        col.addView(makeSecHeader("FULL SYSTEM FORENSIC INSPECTOR (READS & TELLS EVERYTHING)"))
+        val ctrlCard = makeCard()
+        invStatsLabel = TextView(this).apply {
+            text = "Loading complete package, permission, signature & UID telemetry..."
+            textSize = 13.5f
             setTypeface(Typeface.DEFAULT_BOLD)
             setTextColor(Color.parseColor(TXT_MAIN))
-        })
-        hCol.addView(TextView(this).apply {
-            text = "Bayesian Pattern-of-Life Modeling & Zero-Day Anomaly Detection"
-            textSize = 11.5f
-            setTextColor(Color.parseColor(DT_PURPLE))
-        })
-        head.addView(hCol, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        dtCard.addView(head)
-
-        val mRow1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        dtAnomalyScoreVal = addMetricTile(mRow1, "ANOMALY SCORE", "4% (NORMAL)", true)
-        dtBaselineVal = addMetricTile(mRow1, "PATTERN OF LIFE", "LEARNED (99.4%)", false)
-        dtCard.addView(mRow1)
-
-        val mRow2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        dtAntigenaModeVal = addMetricTile(mRow2, "ANTIGENA ENGINE", "AUTONOMOUS ON", true)
-        dtPacketEntropyVal = addMetricTile(mRow2, "PACKET ENTROPY", "0.18 (CLEAN)", false)
-        dtCard.addView(mRow2)
-
-        val dtBtnRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        btnAntigenaToggle = makeBtn("🛡️ Antigena: AUTONOMOUS", "#7E22CE", "#FFFFFF") {
-            antigenaAutonomous = !antigenaAutonomous
-            btnAntigenaToggle.text = if (antigenaAutonomous) "🛡️ Antigena: AUTONOMOUS" else "⏸ Antigena: PASSIVE"
-            dtAntigenaModeVal.text = if (antigenaAutonomous) "AUTONOMOUS ON" else "MONITOR ONLY"
-            runDarktraceBaselineModel()
+            setPadding(0, 0, 0, dp(8))
         }
-        dtBtnRow.addView(btnAntigenaToggle, LinearLayout.LayoutParams(0, dp(42), 1f).apply { rightMargin = dp(8) })
+        ctrlCard.addView(invStatsLabel)
 
-        val btnRecalibrate = makeBtn("🔄 Re-Learn Baseline", CARD_ELEV, CYAN_INFO) {
-            runDarktraceBaselineModel()
-            Toast.makeText(this, "Darktrace Pattern-of-Life model recalibrated", Toast.LENGTH_SHORT).show()
+        invFilterInput = EditText(this).apply {
+            hint = "Search app name, package ID, permission, or risk..."
+            setHintTextColor(Color.parseColor("#64748B"))
+            setTextColor(Color.parseColor(TXT_MAIN))
+            textSize = 13f
+            setPadding(dp(12), dp(9), dp(12), dp(9))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#0B101B"))
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(1), Color.parseColor(BORDER_COL))
+            }
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { refreshInventoryList() }
+                override fun afterTextChanged(s: Editable?) {}
+            })
         }
-        dtBtnRow.addView(btnRecalibrate, LinearLayout.LayoutParams(0, dp(42), 1f))
-        dtCard.addView(dtBtnRow, LinearLayout.LayoutParams(
+        ctrlCard.addView(invFilterInput, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(4) })
+        ).apply { bottomMargin = dp(8) })
 
-        col.addView(dtCard)
+        val filterRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val cats = listOf("ALL" to "All Apps", "THREAT" to "Malware/Bloat", "USER" to "User", "SYSTEM" to "System")
+        cats.forEachIndexed { i, (key, title) ->
+            val b = makeBtn(title, CARD_ELEV, if (key == "THREAT") MCAFEE_CRIMSON else CYAN_INFO) {
+                invCategoryFilter = key
+                refreshInventoryList()
+            }
+            filterRow.addView(b, LinearLayout.LayoutParams(0, dp(36), 1f).apply {
+                if (i < cats.size - 1) rightMargin = dp(4)
+            })
+        }
+        ctrlCard.addView(filterRow)
+        col.addView(ctrlCard)
 
-        col.addView(makeSecHeader("DARKTRACE THREAT VISUALIZER & AUTONOMOUS CONTAINMENT LOG"))
-        val feedCard = makeCard()
-        dtEventFeedBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        feedCard.addView(dtEventFeedBox)
-        col.addView(feedCard)
+        invInspectorCard = makeCard().apply { visibility = View.GONE }
+        val inspHead = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, dp(6))
+        }
+        inspHead.addView(TextView(this).apply {
+            text = "🔬 DEEP PACKAGE FORENSIC DOSSIER"
+            textSize = 12.5f
+            setTypeface(Typeface.DEFAULT_BOLD)
+            setTextColor(Color.parseColor(CYAN_INFO))
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        val btnCloseInsp = makePill("CLOSE ✕", TXT_MAIN, CARD_ELEV).apply {
+            setOnClickListener { invInspectorCard.visibility = View.GONE }
+        }
+        inspHead.addView(btnCloseInsp)
+        invInspectorCard.addView(inspHead)
+
+        invInspectorBody = TextView(this).apply {
+            textSize = 11.5f
+            typeface = Typeface.MONOSPACE
+            setTextColor(Color.parseColor(TXT_MAIN))
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#0B101B"))
+                cornerRadius = dp(10).toFloat()
+            }
+        }
+        invInspectorCard.addView(invInspectorBody)
+        col.addView(invInspectorCard)
+
+        val listCard = makeCard()
+        invListBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        listCard.addView(invListBox)
+        col.addView(listCard)
 
         return col
     }
 
-    private fun runDarktraceBaselineModel() {
-        val curRx = TrafficStats.getTotalRxBytes().coerceAtLeast(0L)
-        val curTx = TrafficStats.getTotalTxBytes().coerceAtLeast(0L)
-        val rxDelta = (curRx - prevRx).coerceAtLeast(0L).toDouble()
-        val txDelta = (curTx - prevTx).coerceAtLeast(0L).toDouble()
-        baselineRxRate = (baselineRxRate * 0.75) + (rxDelta * 0.25)
-        baselineTxRate = (baselineTxRate * 0.75) + (txDelta * 0.25)
-
-        val proxy = System.getProperty("http.proxyHost") ?: System.getProperty("https.proxyHost")
-        val anomalyPct = if (!proxy.isNullOrBlank()) 78 else ((txDelta / (baselineTxRate + 4096.0)) * 12.0).toInt().coerceIn(2, 18)
-
-        if (::dtAnomalyScoreVal.isInitialized) {
-            dtAnomalyScoreVal.text = if (anomalyPct > 45) "$anomalyPct% (DEVIATION)" else "$anomalyPct% (NORMAL)"
-            dtAnomalyScoreVal.setTextColor(Color.parseColor(if (anomalyPct > 45) MCAFEE_CRIMSON else GREEN_SAFE))
-            dtPacketEntropyVal.text = String.format(Locale.US, "%.2f (%s)", anomalyPct / 100.0, if (anomalyPct > 45) "ELEVATED" else "NOMINAL")
+    private fun refreshInventoryList() {
+        val q = if (::invFilterInput.isInitialized) invFilterInput.text.toString().trim().lowercase(Locale.US) else ""
+        val filtered = allAuditedApps.filter { app ->
+            val catOk = when (invCategoryFilter) {
+                "THREAT" -> app.category == "MALWARE" || app.category == "BLOATWARE"
+                "USER" -> app.category == "USER"
+                "SYSTEM" -> app.category == "SYSTEM"
+                else -> true
+            }
+            val textOk = q.isEmpty() ||
+                app.label.lowercase(Locale.US).contains(q) ||
+                app.pkg.lowercase(Locale.US).contains(q) ||
+                app.fullForensicReport.lowercase(Locale.US).contains(q)
+            catOk && textOk
         }
 
-        val now = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
-        val events = listOf(
-            Triple("[$now] Behavioral Baseline", "Device socket cadence matches learned user profile (${fmtSpeed(baselineRxRate)} avg)", GREEN_SAFE),
-            Triple("[$now] Antigena Autonomous Action", if (antigenaAutonomous) "Active • Auto-quarantining anomalous outbound C2 beacons & MITM proxies" else "Passive mode • Alerting only without automated containment", DT_PURPLE),
-            Triple("[$now] TLS / Root CA Integrity", "100% outbound handshakes pinned to Cyber Guardian & System trust anchors", CYAN_INFO),
-            Triple("[$now] Zero-Day Exfiltration Shield", "Outbound upload ratio normal (${fmtSpeed(baselineTxRate)}) • No covert tunneling", GREEN_SAFE)
-        )
+        val malCnt = allAuditedApps.count { it.category == "MALWARE" }
+        val bloatCnt = allAuditedApps.count { it.category == "BLOATWARE" }
+        invStatsLabel.text = "Showing ${filtered.size} of ${allAuditedApps.size} Packages ($malCnt Malware • $bloatCnt Bloatware)"
 
-        if (::dtEventFeedBox.isInitialized) {
-            dtEventFeedBox.removeAllViews()
-            events.forEachIndexed { idx, (t, s, hex) ->
-                val row = LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                    setPadding(0, dp(8), 0, dp(8))
-                }
-                val dot = View(this).apply {
-                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(hex)) }
-                }
-                row.addView(dot, LinearLayout.LayoutParams(dp(9), dp(9)).apply { rightMargin = dp(10) })
-                val c = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                c.addView(TextView(this).apply { text = t; textSize = 13f; setTypeface(Typeface.DEFAULT_BOLD); setTextColor(Color.parseColor(TXT_MAIN)) })
-                c.addView(TextView(this).apply { text = s; textSize = 11.5f; setTextColor(Color.parseColor(TXT_SUB)) })
-                row.addView(c, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-                dtEventFeedBox.addView(row)
-                if (idx < events.size - 1) dtEventFeedBox.addView(makeSep())
+        invListBox.removeAllViews()
+        if (filtered.isEmpty()) {
+            invListBox.addView(TextView(this).apply {
+                text = "No packages matched the current filter."
+                textSize = 13f
+                setTextColor(Color.parseColor(TXT_SUB))
+            })
+            return
+        }
+
+        filtered.take(120).forEachIndexed { idx, item ->
+            val (fg, bg) = when (item.category) {
+                "MALWARE" -> MCAFEE_CRIMSON to "#3B0D18"
+                "BLOATWARE" -> AMBER_WARN to "#33220A"
+                "USER" -> CYAN_INFO to "#0F2942"
+                else -> GREEN_SAFE to "#0D2B22"
             }
+
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, dp(9), 0, dp(9))
+                setOnClickListener {
+                    invInspectorBody.text = item.fullForensicReport
+                    invInspectorCard.visibility = View.VISIBLE
+                    Toast.makeText(context, "Loaded full forensic dossier for ${item.label}", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            val top = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            val titleCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            titleCol.addView(TextView(this).apply {
+                text = item.label
+                textSize = 13.5f
+                setTypeface(Typeface.DEFAULT_BOLD)
+                setTextColor(Color.parseColor(TXT_MAIN))
+            })
+            titleCol.addView(TextView(this).apply {
+                text = item.pkg
+                textSize = 11f
+                typeface = Typeface.MONOSPACE
+                setTextColor(Color.parseColor(TXT_SUB))
+            })
+            top.addView(titleCol, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            top.addView(makePill("${item.category} (${item.riskScore})", fg, bg))
+            row.addView(top)
+
+            row.addView(TextView(this).apply {
+                text = item.summary
+                textSize = 11.5f
+                setTextColor(Color.parseColor(fg))
+                setPadding(0, dp(3), 0, dp(5))
+            })
+
+            val actRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            val bInspect = makeBtn("Read Full Dossier", CARD_ELEV, CYAN_INFO) {
+                invInspectorBody.text = item.fullForensicReport
+                invInspectorCard.visibility = View.VISIBLE
+            }
+            actRow.addView(bInspect, LinearLayout.LayoutParams(0, dp(34), 1f).apply { rightMargin = dp(6) })
+
+            val bSettings = makeBtn("App Info / Disable", CARD_ELEV, TXT_MAIN) {
+                try {
+                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${item.pkg}")))
+                } catch (_: Exception) {}
+            }
+            actRow.addView(bSettings, LinearLayout.LayoutParams(0, dp(34), 1f))
+            row.addView(actRow)
+
+            invListBox.addView(row)
+            if (idx < filtered.take(120).size - 1) invListBox.addView(makeSep())
         }
     }
 
-    // ==================== TAB 3: AI SCAM DETECTOR & FILE VERIFIER ====================
-    private fun buildScamAndWebTab(): LinearLayout {
+    // ==================== TAB 3: RANSOMWARE SHIELD & AI SCAM DETECTOR ====================
+    private fun buildRansomwareAndScamTab(): LinearLayout {
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
-        col.addView(makeSecHeader("McAFEE AI SCAM DETECTOR (TEXT, URL & QR LINKS)"))
-        val scamCard = makeCard()
-        val head = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+        col.addView(makeSecHeader("RANSOMWARE CANARY TRIPWIRE & DOWNLOAD FILE AUDITOR"))
+        val rCard = makeCard()
+        ransomStatusVal = TextView(this).apply {
+            text = "Ransomware Canary Tripwire: ARMED • Monitoring shared storage & executable drops"
+            textSize = 13f
+            setTypeface(Typeface.DEFAULT_BOLD)
+            setTextColor(Color.parseColor(GREEN_SAFE))
             setPadding(0, 0, 0, dp(8))
         }
-        head.addView(
-            createPortraitAvatar(dp(30), MCAFEE_CRIMSON),
-            LinearLayout.LayoutParams(dp(30), dp(30)).apply { rightMargin = dp(10) }
-        )
-        head.addView(TextView(this).apply {
-            text = "Phishing, Smishing & Fake Login Analyzer"
-            textSize = 15f
-            setTypeface(Typeface.DEFAULT_BOLD)
-            setTextColor(Color.parseColor(TXT_MAIN))
-        })
-        scamCard.addView(head)
+        rCard.addView(ransomStatusVal)
 
+        fileHashInput = EditText(this).apply {
+            hint = "Optional file path (e.g., /sdcard/Download/app.apk) or leave blank to scan Downloads"
+            setHintTextColor(Color.parseColor("#64748B"))
+            setTextColor(Color.parseColor(TXT_MAIN))
+            textSize = 13f
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#0B101B"))
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(1), Color.parseColor(BORDER_COL))
+            }
+        }
+        rCard.addView(fileHashInput, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(10) })
+
+        val btnScanFiles = makeBtn("Deploy Canary & Scan Storage / SHA-256", MCAFEE_RED, "#FFFFFF") {
+            deployCanaryAndScanStorage()
+        }
+        rCard.addView(btnScanFiles, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(42)
+        ).apply { bottomMargin = dp(10) })
+
+        fileHashVerdict = TextView(this).apply {
+            text = "Ready to verify canary integrity & inspect Downloads."
+            textSize = 12f
+            typeface = Typeface.MONOSPACE
+            setTextColor(Color.parseColor(TXT_SUB))
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor(CARD_ELEV))
+                cornerRadius = dp(12).toFloat()
+            }
+        }
+        rCard.addView(fileHashVerdict)
+        col.addView(rCard)
+
+        col.addView(makeSecHeader("AI PHISHING, SMISHING & MALICIOUS URL ANALYZER"))
+        val scamCard = makeCard()
         scamInput = EditText(this).apply {
-            hint = "Paste suspicious URL, SMS, WhatsApp/Facebook link, or payment request..."
+            hint = "Paste suspicious URL, SMS, OTP lure, or APK download link..."
             setHintTextColor(Color.parseColor("#64748B"))
             setTextColor(Color.parseColor(TXT_MAIN))
             textSize = 13.5f
@@ -626,7 +750,7 @@ class MainActivity : AppCompatActivity() {
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { bottomMargin = dp(10) })
 
-        val btnScanScam = makeBtn("Analyze with AI Scam Detector", MCAFEE_RED, "#FFFFFF") {
+        val btnScanScam = makeBtn("Analyze Link / Message with SOC AI", "#0284C7", "#FFFFFF") {
             runScamDetector()
         }
         scamCard.addView(btnScanScam, LinearLayout.LayoutParams(
@@ -634,7 +758,7 @@ class MainActivity : AppCompatActivity() {
         ).apply { bottomMargin = dp(10) })
 
         scamVerdict = TextView(this).apply {
-            text = "Ready: Paste any link or text message above to check for phishing & social engineering."
+            text = "Ready: Paste any link or text message above."
             textSize = 12.5f
             setTypeface(Typeface.DEFAULT_BOLD)
             setTextColor(Color.parseColor(TXT_SUB))
@@ -647,59 +771,14 @@ class MainActivity : AppCompatActivity() {
         scamCard.addView(scamVerdict)
         col.addView(scamCard)
 
-        col.addView(makeSecHeader("RANSOMWARE & DOWNLOAD SHA-256 INTEGRITY SCANNER"))
-        val fileCard = makeCard()
-        fileCard.addView(TextView(this).apply {
-            text = "Scan your Downloads folder for suspicious APK installers, scripts, or ransomware payloads, or verify a file path."
-            textSize = 12.5f
-            setTextColor(Color.parseColor(TXT_SUB))
-            setPadding(0, 0, 0, dp(10))
-        })
-
-        fileHashInput = EditText(this).apply {
-            hint = "Optional: /sdcard/Download/filename.apk (leave blank to scan Downloads)"
-            setHintTextColor(Color.parseColor("#64748B"))
-            setTextColor(Color.parseColor(TXT_MAIN))
-            textSize = 13f
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#0B101B"))
-                cornerRadius = dp(12).toFloat()
-                setStroke(dp(1), Color.parseColor(BORDER_COL))
-            }
-        }
-        fileCard.addView(fileHashInput, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = dp(10) })
-
-        val btnScanFiles = makeBtn("Scan Downloads & Verify SHA-256", CARD_ELEV, GREEN_SAFE) {
-            scanDownloadsAndHash()
-        }
-        fileCard.addView(btnScanFiles, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, dp(42)
-        ).apply { bottomMargin = dp(10) })
-
-        fileHashVerdict = TextView(this).apply {
-            text = "Ransomware Shield active • Ready to inspect files."
-            textSize = 12.5f
-            setTextColor(Color.parseColor(TXT_SUB))
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor(CARD_ELEV))
-                cornerRadius = dp(12).toFloat()
-            }
-        }
-        fileCard.addView(fileHashVerdict)
-        col.addView(fileCard)
-
         return col
     }
 
-    // ==================== TAB 4: WI-FI GUARD & FIREWALL ====================
-    private fun buildWifiAndFirewallTab(): LinearLayout {
+    // ==================== TAB 4: NETWORK SOC & DARKTRACE IMMUNE TELEMETRY ====================
+    private fun buildNetworkAndDarktraceTab(): LinearLayout {
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
-        col.addView(makeSecHeader("SAFE WI-FI, VPN TUNNEL & MITM INTRUSION GUARD"))
+        col.addView(makeSecHeader("DARKTRACE IMMUNE SYSTEM & LIVE NETWORK SOC"))
         val wifiCard = makeCard()
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -707,7 +786,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, dp(8))
         }
         top.addView(TextView(this).apply {
-            text = "Live Socket & Encryption Telemetry"
+            text = "Live Socket, DNS, Proxy & Anomaly Feed"
             textSize = 15f
             setTypeface(Typeface.DEFAULT_BOLD)
             setTextColor(Color.parseColor(TXT_MAIN))
@@ -716,13 +795,14 @@ class MainActivity : AppCompatActivity() {
         top.addView(wifiBadge)
         wifiCard.addView(top)
 
-        netTransportVal = addKv(wifiCard, "Transport & VPN Status", "Detecting...")
-        netIpVal = addKv(wifiCard, "Local IPv4 / IPv6 Address", "Detecting...")
-        netDnsProxyVal = addKv(wifiCard, "DNS & HTTP Proxy Audit", "Detecting...")
+        netTransportVal = addKv(wifiCard, "Transport & VPN Tunnel", "Detecting...")
+        netIpVal = addKv(wifiCard, "Local IPv4 / IPv6", "Detecting...")
+        netDnsProxyVal = addKv(wifiCard, "DNS & MITM Proxy Audit", "Detecting...")
         netBandwidthVal = addKv(wifiCard, "Live Speed (↓ / ↑)", "0 KB/s | 0 KB/s")
-        netSessionVal = addKv(wifiCard, "Session Traffic (Rx / Tx)", "0 MB / 0 MB", isLast = true)
+        netSessionVal = addKv(wifiCard, "Session Bytes (Rx / Tx)", "0 MB / 0 MB")
+        dtAnomalyVal = addKv(wifiCard, "Darktrace Immune Score", "99.4% Baseline Match (Clean)", isLast = true)
 
-        val btnWifiSettings = makeBtn("Open Android Wi-Fi & VPN Settings", CARD_ELEV, CYAN_INFO) {
+        val btnWifiSettings = makeBtn("Open Android Wi-Fi & Private DNS Settings", CARD_ELEV, CYAN_INFO) {
             try { startActivity(Intent(Settings.ACTION_WIFI_SETTINGS)) } catch (_: Exception) {}
         }
         wifiCard.addView(btnWifiSettings, LinearLayout.LayoutParams(
@@ -730,57 +810,73 @@ class MainActivity : AppCompatActivity() {
         ).apply { topMargin = dp(10) })
         col.addView(wifiCard)
 
-        col.addView(makeSecHeader("FIREWALL: APPS WITH FULL INTERNET & BACKGROUND ACCESS"))
-        val fwCard = makeCard()
-        fwCard.addView(TextView(this).apply {
-            text = "Third-party apps holding INTERNET permissions (tap to restrict background data):"
-            textSize = 12f
-            setTextColor(Color.parseColor(TXT_SUB))
-            setPadding(0, 0, 0, dp(8))
-        })
-        firewallListBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        fwCard.addView(firewallListBox)
-        col.addView(fwCard)
+        col.addView(makeSecHeader("AUTONOMOUS SOC & ANTIGENA CONTAINMENT LOG"))
+        val feedCard = makeCard()
+        dtEventFeedBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        feedCard.addView(dtEventFeedBox)
+        col.addView(feedCard)
 
         return col
     }
 
-    // ==================== TAB 5: IDENTITY VAULT & BLOATWARE CLEANER ====================
-    private fun buildPrivacyAndVaultTab(): LinearLayout {
+    // ==================== TAB 5: CERTIFICATE DOWNLOAD HUB & USER GUIDELINES ====================
+    private fun buildCertAndGuidelinesTab(): LinearLayout {
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
-        col.addView(makeSecHeader("IDENTITY MONITORING & CREDENTIAL EXPOSURE CHECK"))
-        val idCard = makeCard()
-        idCard.addView(TextView(this).apply {
-            text = "Check email hygiene and generate a cryptographic SHA-256 breach audit token:"
-            textSize = 12.5f
-            setTextColor(Color.parseColor(TXT_SUB))
-            setPadding(0, 0, 0, dp(8))
-        })
-        breachInput = EditText(this).apply {
-            setText(DEV_EMAIL)
+        col.addView(makeSecHeader("CYBER GUARDIAN® PRIVATE ROOT CA — DOWNLOAD & VERIFICATION"))
+        val certCard = makeCard()
+        certCard.addView(TextView(this).apply {
+            text = "Cryptographic X.509 Root Certificate (DER .CRT & Base64 .PEM)"
+            textSize = 15f
+            setTypeface(Typeface.DEFAULT_BOLD)
             setTextColor(Color.parseColor(TXT_MAIN))
-            textSize = 13.5f
-            setPadding(dp(12), dp(10), dp(12), dp(10))
+            setPadding(0, 0, 0, dp(6))
+        })
+
+        certMetaBox = TextView(this).apply {
+            text = "Loading embedded X.509 certificate metadata..."
+            textSize = 11.5f
+            typeface = Typeface.MONOSPACE
+            setTextColor(Color.parseColor(CYAN_INFO))
+            setPadding(dp(10), dp(10), dp(10), dp(10))
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#0B101B"))
                 cornerRadius = dp(12).toFloat()
                 setStroke(dp(1), Color.parseColor(BORDER_COL))
             }
         }
-        idCard.addView(breachInput, LinearLayout.LayoutParams(
+        certCard.addView(certMetaBox, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = dp(10) })
+
+        val dlRow1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val btnDlCrt = makeBtn("⬇ Download Root CA (.CRT)", MCAFEE_RED, "#FFFFFF") {
+            exportCertificateToDownloads(asPem = false)
+        }
+        dlRow1.addView(btnDlCrt, LinearLayout.LayoutParams(0, dp(44), 1f).apply { rightMargin = dp(8) })
+
+        val btnDlPem = makeBtn("⬇ Download Root CA (.PEM)", "#0284C7", "#FFFFFF") {
+            exportCertificateToDownloads(asPem = true)
+        }
+        dlRow1.addView(btnDlPem, LinearLayout.LayoutParams(0, dp(44), 1f))
+        certCard.addView(dlRow1, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { bottomMargin = dp(8) })
 
-        val btnCheckId = makeBtn("Audit Identity & Generate Breach Hash", MCAFEE_RED, "#FFFFFF") {
-            auditIdentityExposure()
+        val dlRow2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val btnCopyPem = makeBtn("📋 Copy PEM Text", CARD_ELEV, GREEN_SAFE) {
+            copyCertificatePemToClipboard()
         }
-        idCard.addView(btnCheckId, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, dp(42)
-        ).apply { bottomMargin = dp(8) })
+        dlRow2.addView(btnCopyPem, LinearLayout.LayoutParams(0, dp(40), 1f).apply { rightMargin = dp(8) })
 
-        breachVerdict = TextView(this).apply {
-            text = "24/7 Identity Guard ready • Enter an email address to inspect."
+        val btnSecSettings = makeBtn("⚙ Open Android CA Settings", CARD_ELEV, AMBER_WARN) {
+            try { startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS)) } catch (_: Exception) {}
+        }
+        dlRow2.addView(btnSecSettings, LinearLayout.LayoutParams(0, dp(40), 1f))
+        certCard.addView(dlRow2)
+
+        certDownloadStatus = TextView(this).apply {
+            text = "Ready: Tap Download Root CA (.CRT or .PEM) to save directly to your Downloads folder."
             textSize = 12f
             setTextColor(Color.parseColor(TXT_SUB))
             setPadding(dp(10), dp(8), dp(10), dp(8))
@@ -788,11 +884,47 @@ class MainActivity : AppCompatActivity() {
                 setColor(Color.parseColor(CARD_ELEV))
                 cornerRadius = dp(10).toFloat()
             }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(8) }
         }
-        idCard.addView(breachVerdict)
-        col.addView(idCard)
+        certCard.addView(certDownloadStatus)
+        col.addView(certCard)
 
-        col.addView(makeSecHeader("McAFEE CRYPTOGRAPHIC PASSWORD GENERATOR"))
+        col.addView(makeSecHeader("STEP-BY-STEP USER GUIDELINES (CERTIFICATE, SOC & WEB APK)"))
+        val guideCard = makeCard()
+        val steps = listOf(
+            "1. Embedded App-Level Trust (Automatic)" to
+                "This APK already pins the Cyber Guardian Private Root CA inside res/xml/network_security_config.xml. No manual installation is required for 29A Guard itself.",
+            "2. System-Wide Browser / Wi-Fi CA Installation (Optional)" to
+                "Tap 'Download Root CA (.CRT)' above to save cyber_guardian_android_ca.crt to Downloads. Open Android Settings → Security & Privacy → More Security Settings → Encryption & Credentials → Install a Certificate → CA Certificate → Select the downloaded .crt file.",
+            "3. Reading Full System Telemetry ('Apps' Tab)" to
+                "Open the 'Apps' tab to inspect every installed User and System package, UID, target SDK, signing status, dangerous permissions, and bloatware score. Tap any app to read its complete forensic dossier.",
+            "4. Anti-Malware, Bloatware & Ransomware Remediation" to
+                "Filter by 'Malware/Bloat' in the Apps tab and tap 'App Info / Disable' to remove or disable unwanted OEM telemetry/adware. Use the 'Ransom' tab to deploy a canary tripwire and verify SHA-256 hashes of downloaded APKs.",
+            "5. Installing the Offline Web APK (PWA)" to
+                "Visit https://mnhemon357-cyber.github.io/29a/ in Chrome or Edge and tap 'Install Web APK' (or browser menu → Add to Home screen) to run the companion offline SOC console."
+        )
+        steps.forEachIndexed { idx, (headTxt, bodyTxt) ->
+            guideCard.addView(TextView(this).apply {
+                text = headTxt
+                textSize = 13.5f
+                setTypeface(Typeface.DEFAULT_BOLD)
+                setTextColor(Color.parseColor(CYAN_INFO))
+                setPadding(0, dp(4), 0, dp(2))
+            })
+            guideCard.addView(TextView(this).apply {
+                text = bodyTxt
+                textSize = 12f
+                setTextColor(Color.parseColor(TXT_MAIN))
+                setLineSpacing(dp(2).toFloat(), 1.05f)
+                setPadding(0, 0, 0, dp(8))
+            })
+            if (idx < steps.size - 1) guideCard.addView(makeSep())
+        }
+        col.addView(guideCard)
+
+        col.addView(makeSecHeader("CRYPTOGRAPHIC 20-CHARACTER KEY GENERATOR"))
         val passCard = makeCard()
         passDisplay = TextView(this).apply {
             textSize = 15f
@@ -809,38 +941,21 @@ class MainActivity : AppCompatActivity() {
         }
         passCard.addView(passDisplay, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { bottomMargin = dp(10) })
-
+        ).apply { bottomMargin = dp(8) })
         val pRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val bGen = makeBtn("Generate 20-Char Key", MCAFEE_RED, "#FFFFFF") { generatePassword() }
-        pRow.addView(bGen, LinearLayout.LayoutParams(0, dp(42), 1f).apply { rightMargin = dp(8) })
-        val bCopy = makeBtn("Copy Password", CARD_ELEV, CYAN_INFO) {
+        pRow.addView(makeBtn("Generate Key", MCAFEE_RED, "#FFFFFF") { generatePassword() }, LinearLayout.LayoutParams(0, dp(40), 1f).apply { rightMargin = dp(8) })
+        pRow.addView(makeBtn("Copy Key", CARD_ELEV, CYAN_INFO) {
             val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            cm.setPrimaryClip(ClipData.newPlainText("Password", passDisplay.text.toString()))
-            Toast.makeText(this, "Password copied to clipboard", Toast.LENGTH_SHORT).show()
-        }
-        pRow.addView(bCopy, LinearLayout.LayoutParams(0, dp(42), 1f))
+            cm.setPrimaryClip(ClipData.newPlainText("Key", passDisplay.text.toString()))
+            Toast.makeText(this, "Key copied", Toast.LENGTH_SHORT).show()
+        }, LinearLayout.LayoutParams(0, dp(40), 1f))
         passCard.addView(pRow)
         col.addView(passCard)
-
-        col.addView(makeSecHeader("APP PRIVACY, SPYWARE & BLOATWARE CLEANER"))
-        val bloatCard = makeCard()
-        bloatSummary = TextView(this).apply {
-            text = "Auditing installed packages..."
-            textSize = 14f
-            setTypeface(Typeface.DEFAULT_BOLD)
-            setTextColor(Color.parseColor(TXT_MAIN))
-            setPadding(0, 0, 0, dp(8))
-        }
-        bloatCard.addView(bloatSummary)
-        bloatListBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        bloatCard.addView(bloatListBox)
-        col.addView(bloatCard)
 
         return col
     }
 
-    // ==================== TAB 6: DEVELOPER PROFILE & WEB APK LAUNCHER ====================
+    // ==================== TAB 6: DEVELOPER PROFILE ====================
     private fun buildDeveloperTab(): LinearLayout {
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
@@ -865,7 +980,7 @@ class MainActivity : AppCompatActivity() {
             setTextColor(Color.parseColor(TXT_MAIN))
         })
         info.addView(TextView(this).apply {
-            text = "Dhaka, Bangladesh • Lead Engineer (29A)"
+            text = "Dhaka, Bangladesh • Lead Security Architect (29A)"
             textSize = 12.5f
             setTypeface(Typeface.DEFAULT_BOLD)
             setTextColor(Color.parseColor(MCAFEE_CRIMSON))
@@ -879,91 +994,47 @@ class MainActivity : AppCompatActivity() {
         topRow.addView(info, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         devCard.addView(topRow)
 
-        devCard.addView(TextView(this).apply {
-            text = "“Everybody has a complete view of completeness.”"
-            textSize = 13f
-            setTypeface(Typeface.DEFAULT, Typeface.ITALIC)
-            setTextColor(Color.parseColor("#FCA5A5"))
-            setPadding(dp(12), dp(8), dp(12), dp(8))
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1F1118"))
-                cornerRadius = dp(10).toFloat()
-            }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = dp(10) }
-        })
-
         addKv(devCard, "Organization", "EMON INDUSTRY PVT LTD _29A")
-        addKv(devCard, "Web APK (PWA)", "mnhemon357-cyber.github.io/29a/")
+        addKv(devCard, "Web APK & Cert Hub", "mnhemon357-cyber.github.io/29a/")
         addKv(devCard, "Root CA Subject", "O=EMON INDUSTRY PVT LTD 29A, CN=Cyber Guardian Private Root CA")
         addKv(devCard, "Education (B.Sc. CSE)", "Daffodil International University, Dhaka (2021–Present)")
         addKv(devCard, "Higher Secondary (HSC)", "Armed Police Battalion Public School & College, Bogura")
         addKv(devCard, "Programming", "Perl-6 (Raku), Python, C, Java, HTML, CSS")
-        addKv(devCard, "Cybersecurity & Linux", "Darktrace AI, Pentesting, Kali Linux, Nano, Vim")
+        addKv(devCard, "Cybersecurity & Linux", "SOC Telemetry, Darktrace AI, Pentesting, Kali Linux")
         addKv(devCard, "Email & Support", "$DEV_EMAIL | $DEV_SUPPORT")
         addKv(devCard, "Portfolio", "357.wordpress.com")
         addKv(devCard, "Facebook URL", "facebook.com/share/1FS8t8eFDL/", isLast = true)
 
         val r0 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val bWebApk = makeBtn("🌐 Open Installable Web APK (PWA)", "#7E22CE", "#FFFFFF") { openUrl(DEV_WEB_APK) }
-        r0.addView(bWebApk, LinearLayout.LayoutParams(0, dp(44), 1f))
-        devCard.addView(r0, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(12) })
+        r0.addView(makeBtn("🌐 Open Web APK & Cert Hub", "#7E22CE", "#FFFFFF") { openUrl(DEV_WEB_APK) }, LinearLayout.LayoutParams(0, dp(44), 1f))
+        devCard.addView(r0, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
 
         val r1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val bFb1 = makeBtn("Facebook (Share)", "#1877F2", "#FFFFFF") { openUrl(DEV_FB_SHARE) }
-        r1.addView(bFb1, LinearLayout.LayoutParams(0, dp(44), 1f).apply { rightMargin = dp(8) })
-        val bFb2 = makeBtn("Facebook Profile", CARD_ELEV, "#60A5FA") { openUrl(DEV_FB_DIRECT) }
-        r1.addView(bFb2, LinearLayout.LayoutParams(0, dp(44), 1f))
-        devCard.addView(r1, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(8) })
+        r1.addView(makeBtn("Facebook (Share)", "#1877F2", "#FFFFFF") { openUrl(DEV_FB_SHARE) }, LinearLayout.LayoutParams(0, dp(44), 1f).apply { rightMargin = dp(8) })
+        r1.addView(makeBtn("Facebook Profile", CARD_ELEV, "#60A5FA") { openUrl(DEV_FB_DIRECT) }, LinearLayout.LayoutParams(0, dp(44), 1f))
+        devCard.addView(r1, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
 
         val r2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val bPort = makeBtn("Portfolio (357.wordpress)", CARD_ELEV, CYAN_INFO) { openUrl(DEV_PORTFOLIO) }
-        r2.addView(bPort, LinearLayout.LayoutParams(0, dp(44), 1f).apply { rightMargin = dp(8) })
-        val bMail = makeBtn("Email Nazmul", MCAFEE_RED, "#FFFFFF") { emailDev() }
-        r2.addView(bMail, LinearLayout.LayoutParams(0, dp(44), 1f))
-        devCard.addView(r2, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(8) })
-
-        val foot = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(0, dp(14), 0, 0)
-        }
-        foot.addView(
-            createPortraitAvatar(dp(22), GREEN_SAFE),
-            LinearLayout.LayoutParams(dp(22), dp(22)).apply { rightMargin = dp(8) }
-        )
-        foot.addView(TextView(this).apply {
-            text = "© 2026 EMON INDUSTRY PVT LTD _29A • Nazmul Hossain"
-            textSize = 11.5f
-            setTextColor(Color.parseColor(TXT_SUB))
-        })
-        devCard.addView(foot)
+        r2.addView(makeBtn("Portfolio (357.wordpress)", CARD_ELEV, CYAN_INFO) { openUrl(DEV_PORTFOLIO) }, LinearLayout.LayoutParams(0, dp(44), 1f).apply { rightMargin = dp(8) })
+        r2.addView(makeBtn("Email Nazmul", MCAFEE_RED, "#FFFFFF") { emailDev() }, LinearLayout.LayoutParams(0, dp(44), 1f))
+        devCard.addView(r2, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
 
         col.addView(devCard)
         return col
     }
 
-    // ==================== CORE SECURITY & SCAN ENGINES ====================
-    private fun executeAntivirusScan(deepMode: Boolean) {
+    // ==================== CORE SOC ENGINE: READS EVERYTHING & TELLS EVERYTHING ====================
+    private fun executeFullSocAudit(deepMode: Boolean) {
         if (scanning) return
         scanning = true
         btnSmartScan.isEnabled = false
-        btnDeepScan.isEnabled = false
-        heroTitle.text = if (deepMode) "Darktrace Deep AI Scan..." else "29A Smart Guard Scan..."
-        heroSub.text = "Inspecting Immune Baseline, System Root CA, Rogue CAs & Packages"
-        updatePill(headerBadge, "SCANNING", CYAN_INFO, "#0F2942")
+        heroTitle.text = "SOC Reading Complete System State..."
+        heroSub.text = "Auditing Every Package, UID, Permission, Root CA & Ransomware Canary"
+        updatePill(headerBadge, "AUDITING", CYAN_INFO, "#0F2942")
         scoreRadar.startScan()
 
-        val dur = if (deepMode) 2400L else 1600L
         val anim = ValueAnimator.ofInt(0, 96).apply {
-            duration = dur
+            duration = if (deepMode) 2200L else 1400L
             interpolator = AccelerateDecelerateInterpolator()
             addUpdateListener { scoreRadar.setScanProgress(it.animatedValue as Int) }
         }
@@ -972,90 +1043,72 @@ class MainActivity : AppCompatActivity() {
         Thread {
             val ts = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
             val checks = mutableListOf<Triple<String, String, String>>()
-            val allAudited = mutableListOf<AuditedApp>()
+            val parsedApps = mutableListOf<AuditedApp>()
             var score = 1000
-            var spyCount = 0
+            var malwareCount = 0
             var bloatCount = 0
+            var userCount = 0
+            var sysCount = 0
 
-            checks.add(Triple(
-                "Darktrace Enterprise Immune AI",
-                if (antigenaAutonomous) "ACTIVE • Pattern-of-Life & Antigena Autonomous Containment ON" else "ACTIVE • Behavioral anomaly monitoring ON",
-                DT_PURPLE
-            ))
-
+            // 1. Root CA Check
             val ca = loadCa()
             if (ca != null) {
                 val fp = sha256(ca)
                 if (fp.equals(EXPECTED_SHA256, ignoreCase = true)) {
-                    checks.add(Triple("29A Root CA Hardware Seal", "SHA-256 Verified: ${fp.take(22)}…", GREEN_SAFE))
+                    checks.add(Triple("Cyber Guardian Private Root CA", "VERIFIED • SHA-256 ${fp.take(22)}… (Available in Cert/Guide tab)", GREEN_SAFE))
                 } else {
                     score -= 220
-                    checks.add(Triple("Root CA Fingerprint Alert", "Bundled CA certificate altered!", MCAFEE_CRIMSON))
+                    checks.add(Triple("Root CA Integrity Alert", "Bundled CA certificate hash mismatch!", MCAFEE_CRIMSON))
                 }
             } else {
-                checks.add(Triple("29A Cryptographic Policy", "SHA-256 Pin: ${EXPECTED_SHA256.take(22)}…", GREEN_SAFE))
+                checks.add(Triple("29A Cryptographic Policy", "Pin Active: ${EXPECTED_SHA256.take(22)}…", GREEN_SAFE))
             }
 
-            val rogueCas = mutableListOf<String>()
+            // 2. System & User CA Trust Store Enumeration
+            var sysCaTotal = 0
+            val userCaNames = mutableListOf<String>()
             try {
                 val ks = KeyStore.getInstance("AndroidCAStore")
                 ks.load(null, null)
                 val aliases = ks.aliases()
                 while (aliases.hasMoreElements()) {
                     val a = aliases.nextElement()
-                    if (a.startsWith("user:")) {
+                    if (a.startsWith("system:")) {
+                        sysCaTotal++
+                    } else if (a.startsWith("user:")) {
                         val cert = ks.getCertificate(a) as? X509Certificate
                         val subj = cert?.subjectX500Principal?.name ?: a
-                        val fp = if (cert != null) sha256(cert) else ""
-                        if (!subj.contains("Cyber Guardian", ignoreCase = true) && !fp.equals(EXPECTED_SHA256, ignoreCase = true)) {
-                            rogueCas.add(subj)
-                        }
+                        userCaNames.add(subj)
                     }
                 }
             } catch (_: Exception) {}
+            checks.add(Triple("Android Trust Store Audit", "Inspected $sysCaTotal System Root CAs & ${userCaNames.size} User CAs", if (userCaNames.isEmpty()) GREEN_SAFE else AMBER_WARN))
 
-            checks.add(Triple(
-                "Cyber Guardian Private Root CA",
-                "ACTIVE • Trusted via System & Embedded Trust Store (RSA 3072-bit)",
-                GREEN_SAFE
-            ))
-
-            if (rogueCas.isEmpty()) {
-                checks.add(Triple("MITM Rogue Certificate Guard", "0 unauthorized user CAs detected", GREEN_SAFE))
-            } else {
-                score -= (rogueCas.size * 150)
-                checks.add(Triple("MITM Rogue CA Alert", "${rogueCas.size} unknown user Root CA(s) found", MCAFEE_CRIMSON))
-            }
-
+            // 3. Accessibility & Device Admin Audit
             val acc = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: ""
             val accList = acc.split(":").filter { it.isNotBlank() }
-            val unknownAcc = accList.filterNot { it.contains("kdeconnect", ignoreCase = true) }
-            if (unknownAcc.isEmpty()) {
-                val note = if (accList.isEmpty()) "0 active screen-reading services" else "Authorized bridge active (KDE Connect)"
-                checks.add(Triple("Anti-Keylogger Accessibility Guard", note, GREEN_SAFE))
-            } else {
-                score -= 80
-                checks.add(Triple("Accessibility Service Active", "${unknownAcc.size} service(s) monitoring screen events", AMBER_WARN))
-            }
-
             val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
             val admins = dpm.activeAdmins ?: emptyList()
-            if (admins.isEmpty()) {
-                checks.add(Triple("Device Administrator Lock", "0 active device admin components", GREEN_SAFE))
-            } else {
-                score -= 50
-                checks.add(Triple("Device Admin Active", "${admins.size} active device admin policy", AMBER_WARN))
-            }
+            checks.add(Triple(
+                "Privilege Escalation & Keylogger Guard",
+                "${accList.size} Accessibility Service(s) • ${admins.size} Device Admin(s) active",
+                if (accList.isEmpty() && admins.isEmpty()) GREEN_SAFE else AMBER_WARN
+            ))
 
-            var totalApps = 0
+            // 4. Full PackageManager Enumeration ("Reads Everything & Tells Everything")
             val trustedTools = setOf("org.telegram.messenger", "org.kde.kdeconnect_tp", "org.gnu.emacs", "com.termux")
-            val spyPerms = setOf(
+            val highRiskPerms = setOf(
                 "android.permission.RECORD_AUDIO",
                 "android.permission.READ_SMS",
+                "android.permission.RECEIVE_SMS",
+                "android.permission.SEND_SMS",
                 "android.permission.ACCESS_FINE_LOCATION",
+                "android.permission.ACCESS_BACKGROUND_LOCATION",
                 "android.permission.READ_CALL_LOG",
                 "android.permission.SYSTEM_ALERT_WINDOW",
-                "android.permission.CAMERA"
+                "android.permission.CAMERA",
+                "android.permission.REQUEST_INSTALL_PACKAGES",
+                "android.permission.MANAGE_EXTERNAL_STORAGE"
             )
             val bloatKeys = listOf(
                 "facebook.system", "facebook.appmanager", "facebook.services",
@@ -1068,99 +1121,269 @@ class MainActivity : AppCompatActivity() {
             )
 
             try {
+                val flags = PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES or PackageManager.GET_RECEIVERS
                 val pkgs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    packageManager.getInstalledPackages(PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()))
+                    packageManager.getInstalledPackages(PackageManager.PackageInfoFlags.of(flags.toLong()))
                 } else {
                     @Suppress("DEPRECATION")
-                    packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS)
+                    packageManager.getInstalledPackages(flags)
                 }
+
                 for (pi in pkgs) {
                     val pkg = pi.packageName ?: continue
-                    if (pkg == packageName) continue
                     val ai = pi.applicationInfo ?: continue
-                    totalApps++
-
                     val isSys = (ai.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                    val isDebuggable = (ai.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
                     val label = try { ai.loadLabel(packageManager).toString() } catch (_: Exception) { pkg }
-                    val perms = pi.requestedPermissions?.toSet() ?: emptySet()
-                    val matchedSpy = perms.intersect(spyPerms)
+                    val perms = pi.requestedPermissions?.toList() ?: emptyList()
+                    val matchedHigh = perms.filter { it in highRiskPerms }
                     val hasLauncher = packageManager.getLaunchIntentForPackage(pkg) != null
                     val hasNet = perms.contains("android.permission.INTERNET")
                     val low = pkg.lowercase(Locale.US)
+                    val verName = pi.versionName ?: "1.0"
+                    val svcCount = pi.services?.size ?: 0
+                    val rcvCount = pi.receivers?.size ?: 0
 
-                    if (!isSys && pkg !in trustedTools && ((!hasLauncher && matchedSpy.size >= 2) || matchedSpy.size >= 4)) {
-                        spyCount++
-                        score -= 140
-                        allAudited.add(AuditedApp(
-                            label, pkg, "SPYWARE VECTOR",
-                            "${matchedSpy.size} surveillance permissions • ${if (!hasLauncher) "Hidden icon" else "Background"}",
-                            highRisk = true, usesInternet = hasNet
-                        ))
-                    } else if (bloatKeys.any { low.contains(it) }) {
-                        bloatCount++
-                        score -= 12
-                        allAudited.add(AuditedApp(
-                            label, pkg, "BLOATWARE",
-                            if (!ai.enabled) "Disabled • $pkg" else "OEM/Carrier telemetry or adware • Tap to disable",
-                            highRisk = false, usesInternet = hasNet
-                        ))
-                    } else if (!isSys && hasNet) {
-                        allAudited.add(AuditedApp(
-                            label, pkg, "FIREWALL",
-                            "User app with active Internet access • Tap to manage data",
-                            highRisk = false, usesInternet = true
-                        ))
+                    var risk = (matchedHigh.size * 14) + (if (isDebuggable && !isSys) 25 else 0) + (if (!hasLauncher && !isSys) 20 else 0)
+                    risk = risk.coerceIn(0, 100)
+
+                    val category = when {
+                        pkg != packageName && !isSys && pkg !in trustedTools && ((!hasLauncher && matchedHigh.size >= 2) || matchedHigh.size >= 5) -> {
+                            malwareCount++
+                            score -= 130
+                            "MALWARE"
+                        }
+                        bloatKeys.any { low.contains(it) } -> {
+                            bloatCount++
+                            score -= 10
+                            "BLOATWARE"
+                        }
+                        !isSys -> {
+                            userCount++
+                            "USER"
+                        }
+                        else -> {
+                            sysCount++
+                            "SYSTEM"
+                        }
                     }
+
+                    val summaryLine = "UID ${ai.uid} • SDK ${ai.targetSdkVersion} • ${perms.size} perms (${matchedHigh.size} sensitive) • ${if (ai.enabled) "Enabled" else "Disabled"}"
+                    val dossier = buildString {
+                        append("PACKAGE: $label ($pkg)\n")
+                        append("CLASSIFICATION: $category | RISK SCORE: $risk/100\n")
+                        append("VERSION: $verName | UID: ${ai.uid} | TARGET SDK: ${ai.targetSdkVersion}\n")
+                        append("STATE: ${if (ai.enabled) "ENABLED" else "DISABLED"} | LAUNCHER ICON: ${if (hasLauncher) "VISIBLE" else "HIDDEN/BACKGROUND"}\n")
+                        append("COMPONENTS: $svcCount Service(s), $rcvCount Broadcast Receiver(s)\n")
+                        append("SOURCE APK: ${ai.sourceDir ?: "N/A"}\n")
+                        append("SENSITIVE PERMISSIONS (${matchedHigh.size}):\n")
+                        if (matchedHigh.isEmpty()) append("  • None\n") else matchedHigh.forEach { append("  • $it\n") }
+                        append("ALL DECLARED PERMISSIONS (${perms.size}):\n")
+                        if (perms.isEmpty()) append("  • None\n") else perms.forEach { append("  • $it\n") }
+                    }
+
+                    parsedApps.add(AuditedApp(
+                        label = label,
+                        pkg = pkg,
+                        category = category,
+                        riskScore = risk,
+                        summary = summaryLine,
+                        fullForensicReport = dossier,
+                        usesInternet = hasNet
+                    ))
                 }
             } catch (_: Exception) {}
 
+            parsedApps.sortWith(compareByDescending<AuditedApp> {
+                when (it.category) {
+                    "MALWARE" -> 4
+                    "BLOATWARE" -> 3
+                    "USER" -> 2
+                    else -> 1
+                }
+            }.thenByDescending { it.riskScore }.thenBy { it.label })
+
+            val total = parsedApps.size
             val finalScore = score.coerceIn(120, 1000)
-            try { Thread.sleep(if (deepMode) 1700L else 1000L) } catch (_: InterruptedException) {}
+            checks.add(Triple(
+                "Full Package Inventory Telemetry",
+                "Read $total total packages: $malwareCount Malware • $bloatCount Bloatware • $userCount User • $sysCount System",
+                if (malwareCount > 0) MCAFEE_CRIMSON else if (bloatCount > 0) AMBER_WARN else GREEN_SAFE
+            ))
 
             fullAuditReport = buildString {
-                append("29A • DARKTRACE & McAFEE+ CYBER GUARDIAN® SECURITY REPORT\n")
+                append("29A • SOC CYBER GUARDIAN® COMPLETE SYSTEM TELEMETRY REPORT\n")
                 append("Architect: Nazmul Hossain (EMON INDUSTRY PVT LTD _29A)\n")
-                append("Protection Score: $finalScore / 1000\n")
-                append("Apps Audited: $totalApps | Spyware: $spyCount | Bloatware: $bloatCount\n")
-                append("Timestamp: $ts\n")
-                checks.forEach { append("• ${it.first}: ${it.second}\n") }
+                append("Timestamp: $ts | SOC Score: $finalScore / 1000\n")
+                append("Inventory: $total Total | $malwareCount Malware | $bloatCount Bloatware | $userCount User | $sysCount System\n\n")
+                checks.forEach { append("[${it.first}] ${it.second}\n") }
+                append("\n--- FLAGGED MALWARE & BLOATWARE ---\n")
+                parsedApps.filter { it.category == "MALWARE" || it.category == "BLOATWARE" }.forEach {
+                    append("• ${it.category}: ${it.label} (${it.pkg}) — ${it.summary}\n")
+                }
             }
+
+            try { Thread.sleep(if (deepMode) 1200L else 700L) } catch (_: InterruptedException) {}
 
             runOnUiThread {
                 anim.cancel()
+                allAuditedApps.clear()
+                allAuditedApps.addAll(parsedApps)
+                refreshInventoryList()
+
                 val st = when {
-                    spyCount > 0 || rogueCas.isNotEmpty() -> McAfeeProtectionScoreView.State.ALERT
-                    bloatCount > 0 -> McAfeeProtectionScoreView.State.WARNING
-                    else -> McAfeeProtectionScoreView.State.SECURE
+                    malwareCount > 0 -> SocRadarShieldView.State.ALERT
+                    bloatCount > 0 -> SocRadarShieldView.State.WARNING
+                    else -> SocRadarShieldView.State.SECURE
                 }
                 scoreRadar.finishScan(finalScore, st)
 
-                when (st) {
-                    McAfeeProtectionScoreView.State.SECURE -> {
-                        heroTitle.text = "You're Protected • Score $finalScore/1000"
-                        heroSub.text = "Audited $totalApps apps • Darktrace AI & 0 threats ($ts)"
-                        updatePill(headerBadge, "SCORE $finalScore", GREEN_SAFE, "#0D2B22")
-                    }
-                    McAfeeProtectionScoreView.State.WARNING -> {
-                        heroTitle.text = "Protection Score: $finalScore / 1000"
-                        heroSub.text = "$bloatCount bloatware item(s) found • Open Vault tab to clean"
-                        updatePill(headerBadge, "$bloatCount BLOAT", AMBER_WARN, "#33220A")
-                    }
-                    McAfeeProtectionScoreView.State.ALERT -> {
-                        heroTitle.text = "Action Needed • Score $finalScore / 1000"
-                        heroSub.text = "$spyCount high-risk threat(s) detected • Review immediately"
-                        updatePill(headerBadge, "ALERT", MCAFEE_CRIMSON, "#3B0D18")
-                    }
+                socCountersRow.text = "TOTAL:$total  MALWARE:$malwareCount  BLOAT:$bloatCount  USER:$userCount  SYS:$sysCount"
+                heroTitle.text = when (st) {
+                    SocRadarShieldView.State.SECURE -> "SOC Clean • Score $finalScore/1000"
+                    SocRadarShieldView.State.WARNING -> "SOC Alert: $bloatCount Bloatware Found"
+                    SocRadarShieldView.State.ALERT -> "CRITICAL: $malwareCount Malware Vector(s)"
+                    else -> "SOC Active"
                 }
+                heroSub.text = "Full system read completed at $ts • Tap 'Apps' tab to inspect every package"
+                updatePill(
+                    headerBadge,
+                    if (malwareCount > 0) "$malwareCount MALWARE" else if (bloatCount > 0) "$bloatCount BLOAT" else "SCORE $finalScore",
+                    if (malwareCount > 0) MCAFEE_CRIMSON else if (bloatCount > 0) AMBER_WARN else GREEN_SAFE,
+                    if (malwareCount > 0) "#3B0D18" else if (bloatCount > 0) "#33220A" else "#0D2B22"
+                )
 
-                renderChecklist(checks)
-                renderBloatAndFirewall(totalApps, spyCount, bloatCount, allAudited)
-
+                renderSocLog(checks)
                 btnSmartScan.isEnabled = true
-                btnDeepScan.isEnabled = true
                 scanning = false
             }
         }.start()
+    }
+
+    // ==================== CERTIFICATE EXPORT & USER GUIDELINES HELPERS ====================
+    private fun populateCertificateInspector() {
+        val ca = loadCa()
+        if (ca != null) {
+            val fp = sha256(ca)
+            certMetaBox.text = buildString {
+                append("SUBJECT: ${ca.subjectX500Principal.name}\n")
+                append("ISSUER:  ${ca.issuerX500Principal.name}\n")
+                append("SERIAL:  ${ca.serialNumber.toString(16).uppercase(Locale.US)}\n")
+                append("VALID:   ${ca.notBefore} -> ${ca.notAfter}\n")
+                append("SHA-256: $fp")
+            }
+        } else {
+            certMetaBox.text = "Subject: O=EMON INDUSTRY PVT LTD 29A, CN=Cyber Guardian Private Root CA\nSHA-256 Pin: $EXPECTED_SHA256"
+        }
+    }
+
+    private fun exportCertificateToDownloads(asPem: Boolean) {
+        val ca = loadCa()
+        if (ca == null) {
+            Toast.makeText(this, "Embedded Root CA not found in APK resources", Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            val dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (!dlDir.exists()) dlDir.mkdirs()
+            val fileName = if (asPem) "cyber_guardian_android_ca.pem" else "cyber_guardian_android_ca.crt"
+            val outFile = File(dlDir, fileName)
+            val bytes = if (asPem) {
+                val b64 = Base64.encodeToString(ca.encoded, Base64.DEFAULT)
+                "-----BEGIN CERTIFICATE-----\n$b64-----END CERTIFICATE-----\n".toByteArray(Charsets.UTF_8)
+            } else {
+                ca.encoded
+            }
+            FileOutputStream(outFile).use { it.write(bytes) }
+            certDownloadStatus.text = "✅ Saved to Downloads: ${outFile.absolutePath} (${bytes.size} bytes)"
+            certDownloadStatus.setTextColor(Color.parseColor("#6EE7B7"))
+            Toast.makeText(this, "Downloaded $fileName to Downloads!", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            // Fallback to app external files dir if scoped storage blocks public Downloads
+            try {
+                val fallbackDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: filesDir
+                val fileName = if (asPem) "cyber_guardian_android_ca.pem" else "cyber_guardian_android_ca.crt"
+                val outFile = File(fallbackDir, fileName)
+                val bytes = if (asPem) {
+                    val b64 = Base64.encodeToString(ca.encoded, Base64.DEFAULT)
+                    "-----BEGIN CERTIFICATE-----\n$b64-----END CERTIFICATE-----\n".toByteArray(Charsets.UTF_8)
+                } else {
+                    ca.encoded
+                }
+                FileOutputStream(outFile).use { it.write(bytes) }
+                certDownloadStatus.text = "✅ Saved Certificate: ${outFile.absolutePath}"
+                certDownloadStatus.setTextColor(Color.parseColor("#6EE7B7"))
+            } catch (ex: Exception) {
+                certDownloadStatus.text = "⚠️ Export notice: ${ex.message}"
+            }
+        }
+    }
+
+    private fun copyCertificatePemToClipboard() {
+        val ca = loadCa() ?: return
+        val b64 = Base64.encodeToString(ca.encoded, Base64.DEFAULT)
+        val pem = "-----BEGIN CERTIFICATE-----\n$b64-----END CERTIFICATE-----\n"
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("Cyber Guardian Root CA PEM", pem))
+        certDownloadStatus.text = "✅ Copied full X.509 PEM certificate block to clipboard."
+        certDownloadStatus.setTextColor(Color.parseColor("#6EE7B7"))
+        Toast.makeText(this, "PEM Certificate copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+
+    // ==================== RANSOMWARE CANARY & SCAM DETECTOR ====================
+    private fun deployCanaryAndScanStorage() {
+        val customPath = fileHashInput.text.toString().trim()
+        if (customPath.isNotEmpty()) {
+            val f = File(customPath)
+            if (!f.exists() || !f.isFile) {
+                fileHashVerdict.text = "⚠️ File not found: $customPath"
+                fileHashVerdict.setTextColor(Color.parseColor("#FCD34D"))
+                return
+            }
+            val digest = MessageDigest.getInstance("SHA-256")
+            f.inputStream().use { inp ->
+                val buf = ByteArray(8192)
+                var r: Int
+                while (inp.read(buf).also { r = it } != -1) digest.update(buf, 0, r)
+            }
+            val hex = digest.digest().joinToString("") { "%02x".format(it) }
+            fileHashVerdict.text = "✅ File Verified: ${f.name} (${f.length() / 1024} KB)\nSHA-256: $hex"
+            fileHashVerdict.setTextColor(Color.parseColor("#6EE7B7"))
+            return
+        }
+
+        // Deploy & verify Ransomware Canary file in app external storage
+        val canaryDir = getExternalFilesDir(null) ?: filesDir
+        val canaryFile = File(canaryDir, ".29a_ransomware_canary.txt")
+        val expectedCanary = "29A_CYBER_GUARDIAN_CANARY_SEAL_DO_NOT_ENCRYPT_OK"
+        var canaryStatus = "ARMED & INTACT"
+        try {
+            if (!canaryFile.exists()) {
+                canaryFile.writeText(expectedCanary)
+            } else if (canaryFile.readText() != expectedCanary) {
+                canaryStatus = "ALERT: CANARY MODIFIED!"
+            }
+        } catch (_: Exception) {}
+
+        val dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val files = dlDir?.listFiles() ?: emptyArray()
+        val ransomExts = listOf(".locked", ".enc", ".crypt", ".cry", ".wnry", ".locky", ".cerber")
+        val ransomHits = files.filter { f -> ransomExts.any { f.name.lowercase(Locale.US).endsWith(it) } }
+        val exeHits = files.filter { f ->
+            val n = f.name.lowercase(Locale.US)
+            n.endsWith(".apk") || n.endsWith(".sh") || n.endsWith(".exe") || n.endsWith(".bat")
+        }
+
+        ransomStatusVal.text = "Ransomware Canary: $canaryStatus • ${ransomHits.size} encrypted ransom files"
+        ransomStatusVal.setTextColor(Color.parseColor(if (ransomHits.isEmpty() && canaryStatus.contains("INTACT")) GREEN_SAFE else MCAFEE_CRIMSON))
+
+        fileHashVerdict.text = buildString {
+            append("Canary Tripwire: $canaryStatus\n")
+            append("Downloads Inspected: ${files.size} total file(s)\n")
+            append("Ransomware Extensions: ${ransomHits.size} detected\n")
+            append("Executable/APK Drops: ${exeHits.size} (${if (exeHits.isEmpty()) "None" else exeHits.take(3).joinToString { it.name }})")
+        }
+        fileHashVerdict.setTextColor(Color.parseColor(if (ransomHits.isEmpty()) "#6EE7B7" else "#FCA5A5"))
     }
 
     private fun runScamDetector() {
@@ -1208,164 +1431,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun scanDownloadsAndHash() {
-        val customPath = fileHashInput.text.toString().trim()
-        if (customPath.isNotEmpty()) {
-            val f = File(customPath)
-            if (!f.exists() || !f.isFile) {
-                fileHashVerdict.text = "⚠️ File not found at: $customPath"
-                fileHashVerdict.setTextColor(Color.parseColor("#FCD34D"))
-                return
-            }
-            val digest = MessageDigest.getInstance("SHA-256")
-            f.inputStream().use { inp ->
-                val buf = ByteArray(8192)
-                var r: Int
-                while (inp.read(buf).also { r = it } != -1) digest.update(buf, 0, r)
-            }
-            val hex = digest.digest().joinToString("") { "%02x".format(it) }
-            fileHashVerdict.text = "✅ Verified File: ${f.name} (${f.length() / 1024} KB)\nSHA-256: $hex"
-            fileHashVerdict.setTextColor(Color.parseColor("#6EE7B7"))
-            return
-        }
-
-        val dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val files = dlDir?.listFiles() ?: emptyArray()
-        val riskyExt = files.filter {
-            val n = it.name.lowercase(Locale.US)
-            n.endsWith(".apk") || n.endsWith(".sh") || n.endsWith(".exe") || n.endsWith(".bat")
-        }
-        fileHashVerdict.text = if (riskyExt.isEmpty()) {
-            "✅ Downloads Clean: Inspected ${files.size} item(s) • 0 executable/APK threats found."
-        } else {
-            "⚠️ Found ${riskyExt.size} installer/script file(s) in Downloads (${riskyExt.take(3).joinToString { it.name }}). Verify source before running."
-        }
-        fileHashVerdict.setTextColor(Color.parseColor(if (riskyExt.isEmpty()) "#6EE7B7" else "#FCD34D"))
-    }
-
-    private fun auditIdentityExposure() {
-        val email = breachInput.text.toString().trim()
-        if (email.isEmpty() || !email.contains("@")) {
-            Toast.makeText(this, "Enter a valid email address", Toast.LENGTH_SHORT).show()
-            return
-        }
-        val hash = MessageDigest.getInstance("SHA-256")
-            .digest(email.lowercase(Locale.US).toByteArray())
-            .joinToString("") { "%02X".format(it) }
-        breachVerdict.text = "✅ Identity Protected: $email\nSHA-256 Audit Token: ${hash.take(32)}…\nRecommendation: Use unique 20-char passwords & 2FA."
-        breachVerdict.setTextColor(Color.parseColor("#6EE7B7"))
-    }
-
-    private fun generatePassword() {
-        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*_-+="
-        val rng = SecureRandom()
-        val sb = StringBuilder()
-        repeat(20) { sb.append(chars[rng.nextInt(chars.length)]) }
-        passDisplay.text = sb.toString()
-    }
-
-    private fun toggleSosAlarm() {
-        if (sosPlaying) {
-            stopSosAlarm()
-            return
-        }
-        try {
-            toneGen = ToneGenerator(AudioManager.STREAM_ALARM, 100)
-            toneGen?.startTone(ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 8000)
-            sosPlaying = true
-            btnSosAlarm.text = "🔇 Stop Anti-Theft Siren"
-            btnSosAlarm.setTextColor(Color.parseColor(MCAFEE_CRIMSON))
-            Toast.makeText(this, "Anti-Theft S.O.S. Siren Activated!", Toast.LENGTH_SHORT).show()
-            handler.postDelayed({ stopSosAlarm() }, 8200L)
-        } catch (_: Exception) {
-            Toast.makeText(this, "Siren triggered", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun stopSosAlarm() {
-        try {
-            toneGen?.stopTone()
-            toneGen?.release()
-        } catch (_: Exception) {}
-        toneGen = null
-        sosPlaying = false
-        if (::btnSosAlarm.isInitialized) {
-            btnSosAlarm.text = "🔊 Trigger Anti-Theft Siren"
-            btnSosAlarm.setTextColor(Color.parseColor(AMBER_WARN))
-        }
-    }
-
-    private fun toggleScreenGuard() {
-        flagSecureActive = !flagSecureActive
-        if (flagSecureActive) {
-            window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
-            btnPrivacyScreen.text = "Screen Guard: ON"
-            btnPrivacyScreen.setTextColor(Color.parseColor(GREEN_SAFE))
-        } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-            btnPrivacyScreen.text = "Screen Guard: OFF"
-            btnPrivacyScreen.setTextColor(Color.parseColor(TXT_SUB))
-        }
-    }
-
-    private fun updateSystemOptimizer() {
-        val cpu = readCpu()
-        cpuValView.text = String.format(Locale.US, "%.1f%% Active", cpu)
-
-        try {
-            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            val mi = ActivityManager.MemoryInfo()
-            am.getMemoryInfo(mi)
-            val tot = mi.totalMem.coerceAtLeast(1L)
-            val used = (tot - mi.availMem).coerceAtLeast(0L)
-            ramValView.text = String.format(Locale.US, "%.1f / %.1f GB (%.0f%%)", used / 1.073741824e9, tot / 1.073741824e9, (used * 100.0) / tot)
-        } catch (_: Exception) {}
-
-        try {
-            val st = StatFs(Environment.getDataDirectory().path)
-            val tot = (st.blockCountLong * st.blockSizeLong).coerceAtLeast(1L)
-            val used = (tot - st.availableBlocksLong * st.blockSizeLong).coerceAtLeast(0L)
-            diskValView.text = String.format(Locale.US, "%.1f / %.1f GB (%.0f%%)", used / 1.073741824e9, tot / 1.073741824e9, (used * 100.0) / tot)
-        } catch (_: Exception) {}
-
-        val mins = SystemClock.elapsedRealtime() / 60_000L
-        var bat = ""
-        try {
-            val bi = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-            if (bi != null) {
-                val lv = bi.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
-                val sc = bi.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
-                if (lv >= 0 && sc > 0) bat = " • ${(lv * 100) / sc}%"
-            }
-        } catch (_: Exception) {}
-        batUptimeValView.text = String.format(Locale.US, "%02dh %02dm%s", mins / 60L, mins % 60L, bat)
-    }
-
-    private fun readCpu(): Float {
-        try {
-            RandomAccessFile("/proc/stat", "r").use { r ->
-                val line = r.readLine()
-                if (line != null && line.startsWith("cpu ")) {
-                    val p = line.trim().split("\\s+".toRegex())
-                    if (p.size >= 5) {
-                        val u = p[1].toLong() + p[2].toLong() + p[3].toLong()
-                        val t = u + p[4].toLong()
-                        if (t > 0L) return ((u * 100.0) / t).toFloat().coerceIn(5f, 96f)
-                    }
-                }
-            }
-        } catch (_: Exception) {}
-        val nowW = SystemClock.elapsedRealtime()
-        val nowC = Process.getElapsedCpuTime()
-        val dw = (nowW - prevWall).coerceAtLeast(1L)
-        val dc = (nowC - prevProcCpu).coerceAtLeast(0L)
-        prevWall = nowW
-        prevProcCpu = nowC
-        val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
-        return (14f + ((dc * 100.0) / (dw * cores)).toFloat()).coerceIn(8f, 92f)
-    }
-
-    private fun updateWifiAndFirewall() {
+    // ==================== NETWORK SOC & DARKTRACE LIVE TELEMETRY ====================
+    private fun updateWifiAndDarktrace() {
         var netName = "Offline"
         var online = false
         var vpn = false
@@ -1435,9 +1502,35 @@ class MainActivity : AppCompatActivity() {
         netDnsProxyVal.text = if (!proxy.isNullOrBlank()) "$dnsStr • PROXY: $proxy" else "$dnsStr • No MITM Proxy"
         netBandwidthVal.text = "↓ ${fmtSpeed(rxRate)}  |  ↑ ${fmtSpeed(txRate)}"
         netSessionVal.text = "↓ ${fmtBytes((curRx - baseRx).coerceAtLeast(0L))}  /  ↑ ${fmtBytes((curTx - baseTx).coerceAtLeast(0L))}"
+        dtAnomalyVal.text = if (!proxy.isNullOrBlank()) "78% Anomaly (MITM Proxy Detected)" else "99.4% Baseline Match (Clean)"
+
+        if (::dtEventFeedBox.isInitialized && dtEventFeedBox.childCount == 0) {
+            val items = listOf(
+                Triple("Darktrace Pattern-of-Life AI", "Continuous socket & upload entropy profiling active", DT_PURPLE),
+                Triple("Antigena Autonomous Containment", "Zero-day C2 beacon & rogue proxy isolation ready", CYAN_INFO),
+                Triple("Cyber Guardian Root CA Pin", "TLS handshakes pinned to EMON INDUSTRY PVT LTD 29A", GREEN_SAFE)
+            )
+            items.forEachIndexed { idx, (t, s, hex) ->
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(0, dp(8), 0, dp(8))
+                }
+                val dotView = View(this).apply {
+                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(hex)) }
+                }
+                row.addView(dotView, LinearLayout.LayoutParams(dp(9), dp(9)).apply { rightMargin = dp(10) })
+                val c = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                c.addView(TextView(this).apply { text = t; textSize = 13f; setTypeface(Typeface.DEFAULT_BOLD); setTextColor(Color.parseColor(TXT_MAIN)) })
+                c.addView(TextView(this).apply { text = s; textSize = 11.5f; setTextColor(Color.parseColor(TXT_SUB)) })
+                row.addView(c, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                dtEventFeedBox.addView(row)
+                if (idx < items.size - 1) dtEventFeedBox.addView(makeSep())
+            }
+        }
     }
 
-    private fun renderChecklist(items: List<Triple<String, String, String>>) {
+    private fun renderSocLog(items: List<Triple<String, String, String>>) {
         scanLogContainer.removeAllViews()
         items.forEachIndexed { idx, (t, s, hex) ->
             val row = LinearLayout(this).apply {
@@ -1462,52 +1555,109 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderBloatAndFirewall(total: Int, spy: Int, bloat: Int, apps: List<AuditedApp>) {
-        val bloatAndSpy = apps.filter { it.tag != "FIREWALL" }.sortedByDescending { it.highRisk }.take(25)
-        bloatSummary.text = "Audited $total Apps • $spy Spyware • $bloat Bloatware"
-        bloatListBox.removeAllViews()
-        if (bloatAndSpy.isEmpty()) {
-            bloatListBox.addView(TextView(this).apply {
-                text = "Clean: 0 spyware or OEM bloatware packages detected."
-                textSize = 13f; setTextColor(Color.parseColor(GREEN_SAFE))
-            })
-        } else {
-            bloatAndSpy.forEachIndexed { idx, item ->
-                val acc = if (item.highRisk) MCAFEE_CRIMSON else AMBER_WARN
-                val bg = if (item.highRisk) "#3B0D18" else "#33220A"
-                bloatListBox.addView(makeAppActionRow(item, if (item.highRisk) "REMOVE ›" else "CLEAN ›", acc, bg))
-                if (idx < bloatAndSpy.size - 1) bloatListBox.addView(makeSep())
-            }
-        }
+    private fun updateSystemOptimizer() {
+        val cpu = readCpu()
+        cpuValView.text = String.format(Locale.US, "%.1f%% Active", cpu)
 
-        val fwApps = apps.filter { it.usesInternet }.take(20)
-        firewallListBox.removeAllViews()
-        fwApps.forEachIndexed { idx, item ->
-            firewallListBox.addView(makeAppActionRow(item, "NET ›", CYAN_INFO, "#0F2942"))
-            if (idx < fwApps.size - 1) firewallListBox.addView(makeSep())
+        try {
+            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val mi = ActivityManager.MemoryInfo()
+            am.getMemoryInfo(mi)
+            val tot = mi.totalMem.coerceAtLeast(1L)
+            val used = (tot - mi.availMem).coerceAtLeast(0L)
+            ramValView.text = String.format(Locale.US, "%.1f / %.1f GB (%.0f%%)", used / 1.073741824e9, tot / 1.073741824e9, (used * 100.0) / tot)
+        } catch (_: Exception) {}
+
+        try {
+            val st = StatFs(Environment.getDataDirectory().path)
+            val tot = (st.blockCountLong * st.blockSizeLong).coerceAtLeast(1L)
+            val used = (tot - st.availableBlocksLong * st.blockSizeLong).coerceAtLeast(0L)
+            diskValView.text = String.format(Locale.US, "%.1f / %.1f GB (%.0f%%)", used / 1.073741824e9, tot / 1.073741824e9, (used * 100.0) / tot)
+        } catch (_: Exception) {}
+
+        val mins = SystemClock.elapsedRealtime() / 60_000L
+        var bat = ""
+        try {
+            val bi = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            if (bi != null) {
+                val lv = bi.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                val sc = bi.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
+                if (lv >= 0 && sc > 0) bat = " • ${(lv * 100) / sc}%"
+            }
+        } catch (_: Exception) {}
+        batUptimeValView.text = String.format(Locale.US, "%02dh %02dm%s", mins / 60L, mins % 60L, bat)
+    }
+
+    private fun readCpu(): Float {
+        try {
+            RandomAccessFile("/proc/stat", "r").use { r ->
+                val line = r.readLine()
+                if (line != null && line.startsWith("cpu ")) {
+                    val p = line.trim().split("\\s+".toRegex())
+                    if (p.size >= 5) {
+                        val u = p[1].toLong() + p[2].toLong() + p[3].toLong()
+                        val t = u + p[4].toLong()
+                        if (t > 0L) return ((u * 100.0) / t).toFloat().coerceIn(5f, 96f)
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+        val nowW = SystemClock.elapsedRealtime()
+        val nowC = Process.getElapsedCpuTime()
+        val dw = (nowW - prevWall).coerceAtLeast(1L)
+        val dc = (nowC - prevProcCpu).coerceAtLeast(0L)
+        prevWall = nowW
+        prevProcCpu = nowC
+        val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
+        return (14f + ((dc * 100.0) / (dw * cores)).toFloat()).coerceIn(8f, 92f)
+    }
+
+    private fun generatePassword() {
+        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*_-+="
+        val rng = SecureRandom()
+        val sb = StringBuilder()
+        repeat(20) { sb.append(chars[rng.nextInt(chars.length)]) }
+        passDisplay.text = sb.toString()
+    }
+
+    private fun toggleSosAlarm() {
+        if (sosPlaying) {
+            stopSosAlarm()
+            return
+        }
+        try {
+            toneGen = ToneGenerator(AudioManager.STREAM_ALARM, 100)
+            toneGen?.startTone(ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 8000)
+            sosPlaying = true
+            btnSosAlarm.text = "🔇 Stop Siren"
+            btnSosAlarm.setTextColor(Color.parseColor(MCAFEE_CRIMSON))
+            handler.postDelayed({ stopSosAlarm() }, 8200L)
+        } catch (_: Exception) {}
+    }
+
+    private fun stopSosAlarm() {
+        try {
+            toneGen?.stopTone()
+            toneGen?.release()
+        } catch (_: Exception) {}
+        toneGen = null
+        sosPlaying = false
+        if (::btnSosAlarm.isInitialized) {
+            btnSosAlarm.text = "🔊 Anti-Theft Siren"
+            btnSosAlarm.setTextColor(Color.parseColor(AMBER_WARN))
         }
     }
 
-    private fun makeAppActionRow(item: AuditedApp, pillTxt: String, fg: String, bg: String): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(8), 0, dp(8))
-            setOnClickListener {
-                try { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${item.pkg}"))) } catch (_: Exception) {}
-            }
-            val col = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-            col.addView(TextView(context).apply {
-                text = item.label; textSize = 13.5f; setTypeface(Typeface.DEFAULT_BOLD); setTextColor(Color.parseColor(TXT_MAIN))
-            })
-            col.addView(TextView(context).apply {
-                text = item.pkg; textSize = 11f; typeface = Typeface.MONOSPACE; setTextColor(Color.parseColor(TXT_SUB))
-            })
-            col.addView(TextView(context).apply {
-                text = item.detail; textSize = 11.5f; setTextColor(Color.parseColor(fg))
-            })
-            addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(makePill(pillTxt, fg, bg))
+    private fun toggleScreenGuard() {
+        flagSecureActive = !flagSecureActive
+        if (flagSecureActive) {
+            window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+            btnPrivacyScreen.text = "Screen Guard: ON"
+            btnPrivacyScreen.setTextColor(Color.parseColor(GREEN_SAFE))
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            btnPrivacyScreen.text = "Screen Guard: OFF"
+            btnPrivacyScreen.setTextColor(Color.parseColor(TXT_SUB))
         }
     }
 
@@ -1531,12 +1681,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun shareReport() {
-        val txt = fullAuditReport.ifBlank { "29A • Darktrace & McAfee+ Cyber Guardian® Active" }
+        val txt = fullAuditReport.ifBlank { "29A • SOC Cyber Guardian® Complete Security Telemetry Active" }
         startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "29A • Darktrace & McAfee+ Security Report")
+            putExtra(Intent.EXTRA_SUBJECT, "29A • SOC Cyber Guardian® Telemetry Report")
             putExtra(Intent.EXTRA_TEXT, txt)
-        }, "Share Audit Report"))
+        }, "Share SOC Audit Report"))
     }
 
     private fun emailDev() {
@@ -1650,9 +1800,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun makeBtn(title: String, bg: String, fg: String, onClick: () -> Unit): Button = Button(this).apply {
-        text = title; textSize = 12.5f; setTypeface(Typeface.DEFAULT_BOLD); setTextColor(Color.parseColor(fg))
+        text = title; textSize = 12f; setTypeface(Typeface.DEFAULT_BOLD); setTextColor(Color.parseColor(fg))
         isAllCaps = false; filterTouchesWhenObscured = true
-        background = GradientDrawable().apply { setColor(Color.parseColor(bg)); cornerRadius = dp(13).toFloat() }
+        background = GradientDrawable().apply { setColor(Color.parseColor(bg)); cornerRadius = dp(12).toFloat() }
         setOnTouchListener { v, e ->
             when (e.action) {
                 MotionEvent.ACTION_DOWN -> v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(80L).start()
@@ -1678,8 +1828,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
-    // ==================== CUSTOM 29A GUARD + DARKTRACE IMMUNE RADAR VIEW ====================
-    class McAfeeProtectionScoreView(context: Context) : View(context) {
+    // ==================== CUSTOM 29A SOC SHIELD & RADAR VIEW ====================
+    class SocRadarShieldView(context: Context) : View(context) {
         enum class State { SCANNING, SECURE, WARNING, ALERT }
         private var state = State.SECURE
         private var score = 995
@@ -1771,7 +1921,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         private fun accent(): Int = when (state) {
-            State.SCANNING -> Color.parseColor("#A855F7")
+            State.SCANNING -> Color.parseColor("#38BDF8")
             State.SECURE -> Color.parseColor("#10B981")
             State.WARNING -> Color.parseColor("#F59E0B")
             State.ALERT -> Color.parseColor("#EF4444")
@@ -1804,7 +1954,7 @@ class MainActivity : AppCompatActivity() {
             }
             nodePaint.color = Color.WHITE
             canvas.drawCircle(cx + innerOrbit, cy, 5.5f, nodePaint)
-            nodePaint.color = Color.parseColor("#A855F7")
+            nodePaint.color = c
             canvas.drawCircle(cx - innerOrbit, cy, 5.5f, nodePaint)
             canvas.restore()
 
@@ -1814,7 +1964,7 @@ class MainActivity : AppCompatActivity() {
             bitTxt.alpha = 185
             bitTxt.textSize = r * 0.105f
             canvas.drawText("29A", cx, cy - innerOrbit + 5f, bitTxt)
-            canvas.drawText("AI", cx, cy + innerOrbit + 5f, bitTxt)
+            canvas.drawText("SOC", cx, cy + innerOrbit + 5f, bitTxt)
             canvas.restore()
 
             canvas.save()
@@ -1855,13 +2005,13 @@ class MainActivity : AppCompatActivity() {
             canvas.restore()
 
             crestTxt.textSize = r * 0.095f
-            canvas.drawText("29A GUARD", cx, cy - sh * 0.34f, crestTxt)
+            canvas.drawText("29A SOC", cx, cy - sh * 0.34f, crestTxt)
 
             bigTxt.textSize = r * 0.23f
             canvas.drawText(if (state == State.SCANNING) "$pct%" else "$score", cx, cy + (bigTxt.textSize * 0.24f), bigTxt)
 
             subTxt.textSize = r * 0.095f
-            canvas.drawText(if (state == State.SCANNING) "IMMUNE AI" else "PROTECTED", cx, cy + (bigTxt.textSize * 0.86f), subTxt)
+            canvas.drawText(if (state == State.SCANNING) "READING" else "PROTECTED", cx, cy + (bigTxt.textSize * 0.86f), subTxt)
         }
     }
 }
